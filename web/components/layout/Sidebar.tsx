@@ -12,7 +12,8 @@ import {
   Terminal,
   Trash2,
   BarChart3,
-  Star
+  Star,
+  Sparkles
 } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { cn } from "@/components/ui";
@@ -43,6 +44,7 @@ export function Sidebar({ isMobile = false }: SidebarProps) {
     { name: "Recent Tasks", href: "/jobs", icon: Clock },
     { name: "Starred", href: "/starred", icon: Star },
     { name: "Trash Bin", href: "/trash", icon: Trash2 },
+    { name: "Cleanup", href: "/cleanup", icon: Sparkles },
     { name: "Settings", href: "/settings", icon: Settings },
     { name: "Developer", href: "/developer", icon: Terminal },
   ];

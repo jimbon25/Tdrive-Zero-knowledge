@@ -20,7 +20,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from api.routes import auth, files, system, jobs, developer, trash, bootstrap, analytics
+from api.routes import auth, files, system, jobs, developer, trash, bootstrap, analytics, duplicates
 from api.schemas import StructuredResponse, ErrorDetail
 from api.dependencies import close_tg_client, get_manager_by_ticket, validate_csrf, download_tickets, validate_integrity, _state
 from core.manager import TDriveManager
@@ -419,6 +419,7 @@ app.include_router(system.router, prefix="/api/v1", dependencies=[Depends(valida
 app.include_router(jobs.router, prefix="/api/v1", dependencies=[Depends(validate_csrf), Depends(validate_integrity)])
 app.include_router(developer.router, prefix="/api/v1", dependencies=[Depends(validate_csrf), Depends(validate_integrity)])
 app.include_router(analytics.router, prefix="/api/v1", dependencies=[Depends(validate_csrf), Depends(validate_integrity)])
+app.include_router(duplicates.router, prefix="/api/v1", dependencies=[Depends(validate_csrf), Depends(validate_integrity)])
 
 @app.get("/")
 async def root():

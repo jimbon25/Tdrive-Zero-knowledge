@@ -171,3 +171,21 @@ class GrowthMetrics(BaseModel):
     today: int
     last_7_days: int
     last_30_days: int
+
+# --- Duplicate Detection Models ---
+
+class DuplicateGroupSchema(BaseModel):
+    sha256: str
+    size: int
+    files: List[FileSchema]
+
+class DuplicateSummarySchema(BaseModel):
+    duplicate_groups_count: int
+    duplicate_files_count: int
+    total_files_in_groups: int
+    recoverable_size: int
+
+class DuplicateCleanupRequest(BaseModel):
+    action: str 
+    file_ids: Optional[List[str]] = None
+

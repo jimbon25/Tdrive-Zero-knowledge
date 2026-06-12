@@ -32,6 +32,7 @@ import { useSelectionStore } from "@/store/useSelectionStore";
 import { useStarFile } from "@/hooks/api/useFiles";
 import { cn, Button } from "@/components/ui";
 import { format } from "date-fns";
+import { formatLocalTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { PreviewModal } from "./PreviewModal";
 import { MoveDialog } from "./MoveDialog";
@@ -396,8 +397,8 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
 
       <div className="hidden md:block col-span-3 text-[10px] text-neutral-400 font-medium">
         {isTrashView && file.deleted_at 
-          ? `Deleted ${format(new Date(file.deleted_at), "MMM d, yyyy")}`
-          : format(new Date(file.created_at), "MMM d, yyyy")}
+          ? `Deleted ${formatLocalTime(file.deleted_at)}`
+          : formatLocalTime(file.created_at)}
       </div>
 
       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
@@ -463,7 +464,7 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
       <div className="md:hidden flex items-center space-x-2 text-[9px] text-neutral-400 pl-12 font-black uppercase tracking-tighter">
         <span>{formatSize(file.size)}</span>
         <span>•</span>
-        <span>{isTrashView && file.deleted_at ? format(new Date(file.deleted_at), "d MMM") : format(new Date(file.created_at), "d MMM")}</span>
+        <span>{isTrashView && file.deleted_at ? `Deleted ${formatLocalTime(file.deleted_at)}` : formatLocalTime(file.created_at)}</span>
         {file.is_folder && <span className="text-amber-500 ml-auto pr-6">Folder</span>}
       </div>
 

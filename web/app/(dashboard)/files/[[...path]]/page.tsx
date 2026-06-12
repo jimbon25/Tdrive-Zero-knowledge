@@ -4,7 +4,7 @@ import React from "react";
 import { useFiles } from "@/hooks/api/useFiles";
 import { FileItem } from "@/components/explorer/FileItem";
 import { Breadcrumbs } from "@/components/explorer/Breadcrumbs";
-import { UploadButton } from "@/components/operations/UploadButton";
+import { NewActionMenu } from "@/components/operations/NewActionMenu";
 import { MoveDialog } from "@/components/explorer/MoveDialog";
 import { useUIStore } from "@/store/useUIStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
@@ -40,7 +40,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
   const currentPathSegments = params.path || [];
   const virtualPath = "/" + currentPathSegments.join("/");
   
-  const { data: files, isLoading, error } = useFiles(virtualPath);
+  const { data: files, isLoading, error, refetch } = useFiles(virtualPath);
   const { viewMode, setViewMode, searchQuery } = useUIStore();
   const { prompt, confirm, addNotification } = useNotificationStore();
   const { selectedIds, clearSelection, isSelectionMode, setSelectedIds } = useSelectionStore();
@@ -225,17 +225,11 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
           
           <div className="flex items-center space-x-2">
             {!isSelectionMode && (
-              <>
-                <Button 
-                  variant="outline" 
-                  className="hidden md:flex rounded-2xl h-12 px-5 font-bold space-x-2 border-neutral-200"
-                  onClick={handleCreateFolder}
-                >
-                  <FolderPlus size={20} />
-                  <span>New Folder</span>
-                </Button>
-                <UploadButton currentPath={virtualPath} />
-              </>
+              <NewActionMenu 
+                currentPath={virtualPath} 
+                onCreateFolder={handleCreateFolder} 
+                onRefresh={refetch} 
+              />
             )}
             {isSelectionMode && (
                <Button 

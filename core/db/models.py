@@ -27,7 +27,7 @@ class FileModel(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     virtual_path: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
-    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
     encrypted: Mapped[bool] = mapped_column(Boolean, default=True)
     is_folder: Mapped[bool] = mapped_column(Boolean, default=False)

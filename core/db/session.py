@@ -52,6 +52,10 @@ class DatabaseSession:
     def create_tables(self) -> None:
         """Creates all tables defined in the models."""
         Base.metadata.create_all(bind=self.engine)
+        from sqlalchemy import text
+        with self.engine.connect() as conn:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_files_sha256 ON files (sha256)"))
+            conn.commit()
 
     def drop_tables(self) -> None:
         """Drops all tables (mainly for testing)."""

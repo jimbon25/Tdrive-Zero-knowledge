@@ -35,6 +35,7 @@ import {
   GrowthMetrics 
 } from "@/types";
 import { cn } from "@/components/ui";
+import { formatLocalTime } from "@/lib/utils";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#64748b"];
 
@@ -257,6 +258,7 @@ export default function AnalyticsPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5">
                        <p className="text-[9px] font-black text-white truncate">{file.filename}</p>
                        <p className="text-[8px] font-bold text-neutral-300">{formatSize(file.size)}</p>
+                       <p className="text-[8px] text-neutral-400 mt-0.5">{formatLocalTime(file.created_at)}</p>
                     </div>
                  </div>
               ))}

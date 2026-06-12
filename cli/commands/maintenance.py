@@ -7,7 +7,7 @@ from core.db.session import DatabaseSession
 from core.client import TDriveClient
 from core.recovery import RecoveryEngine
 
-app = typer.Typer()
+app = typer.Typer(help="System maintenance and recovery tools.", no_args_is_help=True)
 console = Console()
 
 @app.command(name="rebuild")

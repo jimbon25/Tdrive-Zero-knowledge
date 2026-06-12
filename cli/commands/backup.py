@@ -5,7 +5,7 @@ from rich.console import Console
 from core.session import SessionManager
 from core.recovery import BackupEngine
 
-app = typer.Typer()
+app = typer.Typer(help="Manage encrypted system backups.", no_args_is_help=True)
 console = Console()
 
 @app.command(name="create")

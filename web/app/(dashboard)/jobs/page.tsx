@@ -14,6 +14,7 @@ import {
   Search
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { formatLocalTime } from "@/lib/utils";
 import { cn } from "@/components/ui";
 import { useUIStore } from "@/store/useUIStore";
 
@@ -83,7 +84,7 @@ export default function JobsPage() {
                       </span>
                     </div>
                     <div className="flex items-center mt-0.5 space-x-2 text-[10px] text-neutral-400 font-medium">
-                      <span>{formatDistanceToNow(new Date(job.created_at + (job.created_at.endsWith('Z') ? '' : 'Z')), { addSuffix: true })}</span>
+                      <span>{formatLocalTime(job.created_at)}</span>
                     </div>
                   </div>
                 </div>

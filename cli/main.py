@@ -16,7 +16,8 @@ console = Console()
 
 app = typer.Typer(
     help="TDrive: Telegram-Backend Personal Cloud Storage",
-    rich_markup_mode="rich"
+    rich_markup_mode="rich",
+    no_args_is_help=True
 )
 
 # Init Group
@@ -63,9 +64,23 @@ def doctor_old():
     doctor.handle_doctor()
 app.add_typer(doctor_app, name="doctor")
 
-# Add maintenance and backup as command groups
-app.add_typer(maintenance.app, name="maintenance")
-app.add_typer(backup.app, name="backup")
+# Maintenance Group
+maintenance_app = maintenance.app
+@maintenance_app.callback(invoke_without_command=True)
+def maintenance_callback(ctx: typer.Context):
+    """System maintenance and recovery tools."""
+    if ctx.invoked_subcommand is None:
+        console.print(ctx.get_help())
+app.add_typer(maintenance_app, name="maintenance", help="System maintenance and recovery tools.")
+
+# Backup Group
+backup_app = backup.app
+@backup_app.callback(invoke_without_command=True)
+def backup_callback(ctx: typer.Context):
+    """Manage encrypted system backups."""
+    if ctx.invoked_subcommand is None:
+        console.print(ctx.get_help())
+app.add_typer(backup_app, name="backup", help="Manage encrypted system backups.")
 
 @app.command(name="version")
 def version_cmd():
@@ -94,7 +109,7 @@ def run_cmd():
         console.print(f"[red]Failed to open browser: {e}[/red]")
         console.print(f"Please open manually: [link={url}]{url}[/link]")
 
-@app.command(name="upload")
+@app.command(name="upload", no_args_is_help=True)
 def upload_cmd(
     path: str = typer.Argument(..., help="Path to file or folder"),
     virtual_path: str = typer.Option("/", "--vpath", help="Virtual folder path in TDrive")
@@ -102,7 +117,7 @@ def upload_cmd(
     """[bold green]Upload[/bold green] a file to TDrive."""
     asyncio.run(upload.handle_upload(path, virtual_path))
 
-@app.command(name="download")
+@app.command(name="download", no_args_is_help=True)
 def download_cmd(
     file_id: str = typer.Argument(..., help="File ID or SHA256"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output path")
@@ -110,7 +125,7 @@ def download_cmd(
     """[bold blue]Download[/bold blue] a file from TDrive."""
     asyncio.run(download.handle_download(file_id, output))
 
-@app.command(name="rm")
+@app.command(name="rm", no_args_is_help=True)
 def rm_cmd(file_id: str = typer.Argument(..., help="File ID to delete")):
     """[bold red]Remove[/bold red] a file from TDrive and Telegram."""
     asyncio.run(rm.handle_rm(file_id))

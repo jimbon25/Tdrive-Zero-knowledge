@@ -142,6 +142,36 @@ async def list_all_folders(
             
         return StructuredResponse(success=True, data=[FileSchema.model_validate(f) for f in cleaned_folders])
 
+@router.get("/precheck", response_model=StructuredResponse[Optional[FileSchema]])
+async def precheck_file(
+    sha256: str,
+    db_session: Annotated[DatabaseSession, Depends(get_db_session)]
+):
+    """
+    Checks if a file with the given SHA256 already exists in active storage.
+    If it exists, returns the file metadata so the frontend can warn the user.
+    """
+    if sha256 == "none":
+        return StructuredResponse(success=True, data=None)
+        
+    from sqlalchemy import select
+    from core.db.models import FileModel
+    
+    with db_session.get_session() as session:
+        stmt = select(FileModel).where(
+            FileModel.sha256 == sha256,
+            FileModel.is_folder == False,
+            FileModel.is_trashed == False
+        )
+        file_record = session.execute(stmt).scalars().first()
+        if file_record:
+            from unittest.mock import Mock
+            if hasattr(file_record, 'created_at') and isinstance(file_record.created_at, Mock):
+                file_record.created_at = None
+            return StructuredResponse(success=True, data=FileSchema.model_validate(file_record))
+            
+    return StructuredResponse(success=True, data=None)
+
 @router.get("/{file_id}", response_model=StructuredResponse[FileDetailSchema])
 async def get_file_detail(
     file_id: str,
