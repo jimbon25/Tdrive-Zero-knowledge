@@ -3,11 +3,9 @@ from rich.console import Console
 from core.bootstrap import BootstrapService
 from core.session import SessionManager
 
-app = typer.Typer()
 console = Console()
 
-@app.command(name="init-cmd")
-def init_cmd():
+def handle_init():
     """Initialize TDrive configuration and directory."""
     service = BootstrapService()
     status = service.get_status()

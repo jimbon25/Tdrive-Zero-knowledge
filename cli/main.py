@@ -10,6 +10,7 @@ import typer
 from rich.console import Console
 
 from cli.commands import init, login, upload, download, ls, rm, doctor, maintenance, backup
+from core import __version__
 
 console = Console()
 
@@ -18,19 +19,80 @@ app = typer.Typer(
     rich_markup_mode="rich"
 )
 
-from core.session import SessionManager
-try:
-    SessionManager().cleanup_tmp()
-except Exception:
-    pass
+# Init Group
+init_app = typer.Typer(help="Initialize TDrive configuration and directory.", invoke_without_command=True)
+@init_app.callback()
+def init_callback(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        init.handle_init()
+@init_app.command(name="init-cmd", hidden=True)
+def init_old():
+    init.handle_init()
+app.add_typer(init_app, name="init")
 
-# Add command groups
-app.add_typer(init.app, name="init")
-app.add_typer(login.app, name="login")
-app.add_typer(ls.app, name="ls")
-app.add_typer(doctor.app, name="doctor")
+# Login Group
+login_app = typer.Typer(help="Log in to Telegram and create a session.", invoke_without_command=True)
+@login_app.callback()
+def login_callback(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        login.handle_login()
+@login_app.command(name="login-cmd", hidden=True)
+def login_old():
+    login.handle_login()
+app.add_typer(login_app, name="login")
+
+# LS Group
+ls_app = typer.Typer(help="List files in TDrive.", invoke_without_command=True)
+@ls_app.callback()
+def ls_callback(ctx: typer.Context, path: str = typer.Argument("/", help="Virtual path to list")):
+    if ctx.invoked_subcommand is None:
+        ls.handle_ls(path)
+@ls_app.command(name="ls-cmd", hidden=True)
+def ls_old(path: str = typer.Argument("/", help="Virtual path to list")):
+    ls.handle_ls(path)
+app.add_typer(ls_app, name="ls")
+
+# Doctor Group
+doctor_app = typer.Typer(help="Check the health of TDrive components.", invoke_without_command=True)
+@doctor_app.callback()
+def doctor_callback(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        doctor.handle_doctor()
+@doctor_app.command(name="doctor-cmd", hidden=True)
+def doctor_old():
+    doctor.handle_doctor()
+app.add_typer(doctor_app, name="doctor")
+
+# Add maintenance and backup as command groups
 app.add_typer(maintenance.app, name="maintenance")
 app.add_typer(backup.app, name="backup")
+
+@app.command(name="version")
+def version_cmd():
+    """Display TDrive version."""
+    console.print(f"TDrive [bold cyan]v{__version__}[/bold cyan]")
+
+@app.command(name="run")
+def run_cmd():
+    """Open TDrive Web UI in Firefox (Private Window)."""
+    import subprocess
+    import platform
+    
+    url = "http://localhost:3000"
+    console.print(f"Opening [bold cyan]{url}[/bold cyan] in Firefox Private Mode...")
+    
+    try:
+        system = platform.system()
+        if system == "Linux":
+            subprocess.Popen(["firefox", "--private-window", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        elif system == "Windows":
+            subprocess.Popen(["start", "firefox", "-private-window", url], shell=True)
+        else:
+            import webbrowser
+            webbrowser.open(url)
+    except Exception as e:
+        console.print(f"[red]Failed to open browser: {e}[/red]")
+        console.print(f"Please open manually: [link={url}]{url}[/link]")
 
 @app.command(name="upload")
 def upload_cmd(

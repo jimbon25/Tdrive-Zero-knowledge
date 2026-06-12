@@ -5,11 +5,9 @@ from core.session import SessionManager
 from core.bootstrap import BootstrapService
 from telethon import TelegramClient
 
-app = typer.Typer()
 console = Console()
 
-@app.command(name="login-cmd")
-def login_cmd():
+def handle_login():
     """Log in to Telegram and create a session."""
     service = BootstrapService()
     status = service.get_status()

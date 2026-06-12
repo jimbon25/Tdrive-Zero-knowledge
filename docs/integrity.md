@@ -43,12 +43,12 @@ The system detects CI platforms (GitHub Actions, etc.) and defaults to **Read-On
 ### Authorize Machine
 If you see an "Environment Not Authorized" warning:
 ```bash
-python3 -m cli.main verify-instance
+tdrive verify-instance
 ```
 *Requires Master Password confirmation.*
 
 ### Reset Fingerprint
 To update the lock for a new machine:
 ```bash
-python3 -m cli.main verify-instance --reset
+tdrive verify-instance --reset
 ```

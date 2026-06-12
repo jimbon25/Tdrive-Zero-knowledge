@@ -69,17 +69,17 @@ Clone the repository and initialize the environment:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install .  # Use 'pip install -e .' for development mode
 ```
 
 Initialize configuration:
 ```bash
-python3 -m cli.main init init-cmd
+tdrive init
 ```
 
 Authenticate with Telegram:
 ```bash
-python3 -m cli.main login login-cmd
+tdrive login
 ```
 
 ### 3. Frontend Setup

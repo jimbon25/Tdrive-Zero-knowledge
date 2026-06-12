@@ -30,11 +30,11 @@ git clone https://github.com/jimbon25/T-drive.git
 cd T-drive
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install .
 
 # Configure & Run
-python3 -m cli.main init init-cmd
-python3 -m cli.main login login-cmd
+tdrive init
+tdrive login
 cd web && npm install && npm run dev
 ```
 
@@ -75,13 +75,13 @@ python -m venv venv
 .\venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install .
 
 # Initialize configuration
-python -m cli.main init init-cmd
+tdrive init
 
 # Authenticate Telegram
-python -m cli.main login login-cmd
+tdrive login
 
 # Start the Agent
 python -m api.main

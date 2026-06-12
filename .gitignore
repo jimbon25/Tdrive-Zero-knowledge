@@ -61,5 +61,10 @@ Thumbs.db
 *.swp
 *.o
 
+# Python distribution / packaging
+dist/
+build/
+*.egg-info/
+
 # TypeScript
 *.tsbuildinfo

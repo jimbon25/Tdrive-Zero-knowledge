@@ -61,5 +61,6 @@ async def handle_upload(path_str: str, virtual_path: str):
             console.print(f"\n[bold green]Upload Complete![/bold green] File ID: [white]{file_id}[/white]")
         except Exception as e:
             console.print(f"\n[bold red]Upload Failed:[/bold red] {str(e)}")
+            raise typer.Exit(1)
         finally:
             await tg_client.disconnect()

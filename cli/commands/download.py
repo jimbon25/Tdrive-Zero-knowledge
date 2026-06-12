@@ -70,5 +70,6 @@ async def handle_download(file_id: str, output: str = None):
             console.print(f"\n[bold green]Download Complete![/bold green] Saved to: [white]{out_path}[/white]")
         except Exception as e:
             console.print(f"\n[bold red]Download Failed:[/bold red] {str(e)}")
+            raise typer.Exit(1)
         finally:
             await tg_client.disconnect()

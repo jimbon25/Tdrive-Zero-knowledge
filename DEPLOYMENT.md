@@ -29,8 +29,8 @@ This guide covers how to deploy TDrive in a production environment using Docker 
 4. **Initialize TDrive**:
    Access the CLI inside the container:
    ```bash
-   docker exec -it tdrive-api python -m cli.main init
-   docker exec -it tdrive-api python -m cli.main login
+   docker exec -it tdrive-api tdrive init
+   docker exec -it tdrive-api tdrive login
    ```
 
 5. **Access**:
@@ -44,13 +44,13 @@ This guide covers how to deploy TDrive in a production environment using Docker 
    ```bash
    python3 -m venv venv
    source venv/bin/activate
-   pip install -r requirements.txt # (or install manually)
+   pip install .
    ```
 
 2. **Initialize**:
    ```bash
-   python -m cli.main init
-   python -m cli.main login
+   tdrive init
+   tdrive login
    ```
 
 3. **Setup systemd**:
@@ -89,7 +89,7 @@ tailscale funnel 443 proxy 80
 ### Automated Backups
 Add a crontab entry to backup TDrive weekly:
 ```bash
-0 0 * * 0 /usr/bin/python3 /home/user/Tdrive/cli/main.py maintenance backup -o /backups/tdrive_$(date +\%F).zip
+0 0 * * 0 /home/user/Tdrive/venv/bin/tdrive backup create -o /backups/tdrive_$(date +\%F).zip
 ```
 
 ### Log Rotation

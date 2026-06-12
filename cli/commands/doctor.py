@@ -6,11 +6,9 @@ from core.session import SessionManager
 from core.db.session import DatabaseSession
 from core.client import TDriveClient
 
-app = typer.Typer()
 console = Console()
 
-@app.command(name="doctor-cmd")
-def doctor_cmd():
+def handle_doctor():
     """Check the health of TDrive components."""
     sm = SessionManager()
     

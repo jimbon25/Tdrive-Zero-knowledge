@@ -5,11 +5,9 @@ from core.session import SessionManager
 from core.db.session import DatabaseSession
 from core.db.manager import DBManager
 
-app = typer.Typer()
 console = Console()
 
-@app.command(name="ls-cmd")
-def ls_cmd(path: str = "/"):
+def handle_ls(path: str = "/"):
     """List files in TDrive."""
     sm = SessionManager()
     db_path = sm.config_dir / "tdrive.db"
