@@ -70,8 +70,6 @@ async def list_files(
 ):
     from urllib.parse import unquote
     decoded_path = unquote(path)
-    if "%" in decoded_path:
-        decoded_path = unquote(decoded_path)
         
     with db_session.get_session() as session:
         db = DBManager(session)
@@ -177,9 +175,12 @@ async def create_folder(
     manager: Annotated[TDriveManager, Depends(get_manager)]
 ):
     """Creates a new virtual folder."""
+    from urllib.parse import unquote
+    normalized_vpath = unquote(request.vpath)
+    
     with db_session_factory.get_session() as session:
         db = DBManager(session)
-        folder = db.create_folder(request.name, request.vpath)
+        folder = db.create_folder(request.name, normalized_vpath)
         session.commit()
         return StructuredResponse(success=True, data=FileSchema.model_validate(folder))
 
@@ -209,6 +210,9 @@ async def upload_file(
     file: UploadFile = File(...),
     vpath: str = Form("/")
 ):
+    from urllib.parse import unquote
+    normalized_vpath = unquote(vpath)
+    
     job_id = uuid.uuid4().hex
     file_ext = Path(file.filename).suffix
     safe_filename = f"upload_{uuid.uuid4().hex}{file_ext}"
@@ -245,7 +249,7 @@ async def upload_file(
                 db = DBManager(session)
                 db.update_job_status(job_id, "running")
 
-            file_id = await manager_factory.upload_file(temp_storage_path, virtual_path=vpath, progress_callback=progress_hook)
+            file_id = await manager_factory.upload_file(temp_storage_path, virtual_path=normalized_vpath, progress_callback=progress_hook)
 
             with db_session_factory.get_session() as session:
                 db = DBManager(session)
@@ -400,10 +404,13 @@ async def move_files(
     manager: Annotated[TDriveManager, Depends(get_manager)]
 ):
     """Moves multiple files/folders to destination."""
+    from urllib.parse import unquote
+    normalized_destination = unquote(request.destination)
+    
     try:
         result = await manager.move_files(
             items=[{"file_id": item.file_id, "item_type": item.item_type} for item in request.items],
-            destination=request.destination
+            destination=normalized_destination
         )
         return StructuredResponse(success=True, data=result)
     except ManagerError as e:
@@ -417,16 +424,19 @@ async def bulk_move(
     db_session: Annotated[DatabaseSession, Depends(get_db_session)]
 ):
     """Bulk moves files/folders to destination (used by Move Dialog UI)."""
+    from urllib.parse import unquote
+    normalized_target_path = unquote(request.target_path)
+    
     with db_session.get_session() as session:
         db = DBManager(session)
         
-        if not _validate_target_path(db, request.target_path):
+        if not _validate_target_path(db, normalized_target_path):
             raise HTTPException(
                 status_code=400,
-                detail=f"Target directory '{request.target_path}' does not exist"
+                detail=f"Target directory '{normalized_target_path}' does not exist"
             )
             
-        dest_dir = request.target_path.rstrip("/") if request.target_path != "/" else "/"
+        dest_dir = normalized_target_path.rstrip("/") if normalized_target_path != "/" else "/"
         count = 0
         
         for item_id in request.item_ids:
