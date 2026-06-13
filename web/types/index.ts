@@ -49,6 +49,8 @@ export interface SystemStatus {
   bot?: {
     is_active: boolean;
     username: string | null;
+    has_authorized_user?: boolean;
+    authorized_users?: number[];
   };
   features?: {
     core: FeatureInfo[];

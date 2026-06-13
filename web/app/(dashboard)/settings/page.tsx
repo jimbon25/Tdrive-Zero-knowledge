@@ -32,6 +32,8 @@ import toast from "react-hot-toast";
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [botTokenInput, setBotToken] = React.useState("");
+  const [authorizedUsersInput, setAuthorizedUsersInput] = React.useState("");
+  const [isAuthUsersDirty, setIsAuthUsersDirty] = React.useState(false);
   const { confirm, addNotification } = useNotificationStore();
   const { 
     themeMode, setThemeMode, 
@@ -96,6 +98,24 @@ export default function SettingsPage() {
       setBotToken("");
     }
   });
+
+  const updateAuthorizedUsers = useMutation({
+    mutationFn: async (users: string) => await api.post(`/system/config/bot-authorized-users?users=${encodeURIComponent(users)}`),
+    onSuccess: () => {
+      toast.success("Authorized users updated");
+      setIsAuthUsersDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["system-status"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error?.message || "Failed to update authorized users");
+    }
+  });
+
+  React.useEffect(() => {
+    if (status?.bot?.authorized_users && !isAuthUsersDirty) {
+      setAuthorizedUsersInput(status.bot.authorized_users.join(", "));
+    }
+  }, [status, isAuthUsersDirty]);
 
   const toggleDevMode = useMutation({
     mutationFn: async (enabled: boolean) => await api.post(`/developer/config/dev-mode?enabled=${enabled}`),
@@ -234,42 +254,98 @@ export default function SettingsPage() {
               </button>
            </div>
 
-           {isBotEnabled && status?.bot && (
-             <div className="flex items-center space-x-3 p-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-xl">
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  status.bot.is_active ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-red-500"
-                )} />
-                <div className="flex-1">
-                   <p className="text-[10px] font-black uppercase text-neutral-400">Bot Status</p>
-                   <p className="text-xs font-bold">
-                      {status.bot.is_active ? "Connected & Online" : "Disconnected"}
-                      {status.bot.username && <span className="ml-2 text-primary">@{status.bot.username}</span>}
-                   </p>
+            {isBotEnabled && status?.bot && (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 p-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-xl">
+                   <div className={cn(
+                     "w-2 h-2 rounded-full",
+                     status.bot.is_active ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-red-500"
+                   )} />
+                   <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase text-neutral-400">Bot Status</p>
+                      <p className="text-xs font-bold">
+                         {status.bot.is_active ? "Connected & Online" : "Disconnected"}
+                         {status.bot.username && <span className="ml-2 text-primary">@{status.bot.username}</span>}
+                      </p>
+                   </div>
                 </div>
-             </div>
-           )}
 
-           <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase text-neutral-400">Bot Token (from @BotFather)</label>
-              <div className="flex gap-2">
-                 <input 
-                   type="password"
-                   placeholder="123456:ABC-DEF..."
-                   value={botTokenInput}
-                   onChange={(e) => setBotToken(e.target.value)}
-                   className="flex-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
-                 />
-                 <Button 
-                   className="h-10 px-6 rounded-xl font-bold text-xs"
-                   disabled={!botTokenInput || updateBotToken.isPending}
-                   onClick={() => updateBotToken.mutate(botTokenInput)}
-                 >
-                    {updateBotToken.isPending ? <Loader2 className="animate-spin" size={14} /> : "Save Token"}
-                 </Button>
+                {status.bot.has_authorized_user ? (
+                  <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400 font-bold bg-green-500/5 p-3 border border-green-500/10 rounded-xl">
+                    <span>✓ Authorized User Configured</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-1 p-3 bg-amber-500/5 border border-amber-500/10 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-medium">
+                    <span className="font-bold flex items-center space-x-1">
+                      <span>⚠ No Authorized User Configured</span>
+                    </span>
+                    <span className="text-[10px] opacity-80">
+                      No Authorized User configured. Bot is publicly accessible.
+                    </span>
+                  </div>
+                )}
               </div>
-           </div>
-        </div>
+            )}
+
+            <div className="space-y-3">
+               <label className="text-[10px] font-black uppercase text-neutral-400">Bot Token (from @BotFather)</label>
+               <div className="flex gap-2">
+                  <input 
+                    type="password"
+                    placeholder="123456:ABC-DEF..."
+                    value={botTokenInput}
+                    onChange={(e) => setBotToken(e.target.value)}
+                    className="flex-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                  <Button 
+                    className="h-10 px-6 rounded-xl font-bold text-xs"
+                    disabled={!botTokenInput || updateBotToken.isPending}
+                    onClick={() => updateBotToken.mutate(botTokenInput)}
+                  >
+                     {updateBotToken.isPending ? <Loader2 className="animate-spin" size={14} /> : "Save Token"}
+                  </Button>
+               </div>
+            </div>
+
+            <div className="space-y-3">
+               <label className="text-[10px] font-black uppercase text-neutral-400">Authorized Telegram User ID(s)</label>
+               <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    placeholder="e.g. 123456789, 987654321"
+                    value={authorizedUsersInput}
+                    onChange={(e) => {
+                      setAuthorizedUsersInput(e.target.value);
+                      setIsAuthUsersDirty(true);
+                    }}
+                    className="flex-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                  <Button 
+                    className="h-10 px-6 rounded-xl font-bold text-xs"
+                    disabled={updateAuthorizedUsers.isPending}
+                    onClick={() => {
+                      const rawInput = authorizedUsersInput.trim();
+                      if (rawInput) {
+                        const parts = rawInput.replace(/,/g, "\n").split("\n");
+                        for (const part of parts) {
+                          const clean = part.trim();
+                          if (clean && !/^\d+$/.test(clean)) {
+                            toast.error(`Invalid User ID: "${clean}". User ID must be numeric.`);
+                            return;
+                          }
+                        }
+                      }
+                      updateAuthorizedUsers.mutate(authorizedUsersInput);
+                    }}
+                  >
+                     {updateAuthorizedUsers.isPending ? <Loader2 className="animate-spin" size={14} /> : "Save Users"}
+                  </Button>
+               </div>
+               <p className="text-[10px] text-neutral-500 font-medium">
+                  Separate multiple Telegram User IDs with commas or newlines. Leave empty for open access.
+               </p>
+            </div>
+         </div>
       </section>
 
       {/* 4. Status Overview */}

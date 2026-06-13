@@ -55,11 +55,23 @@ async def get_status(
     # Bot Status
     from api.dependencies import _state
     bot_info = None
+    config = sm.load_config()
+    auth_users = config.get("bot_authorized_users", [])
     if _state.bot_worker:
         from api.schemas import BotInfo
         bot_info = BotInfo(
             is_active=_state.bot_worker.is_connected(),
-            username=_state.bot_worker.username
+            username=_state.bot_worker.username,
+            has_authorized_user=len(auth_users) > 0,
+            authorized_users=auth_users
+        )
+    elif config.get("bot_token"):
+        from api.schemas import BotInfo
+        bot_info = BotInfo(
+            is_active=False,
+            username=None,
+            has_authorized_user=len(auth_users) > 0,
+            authorized_users=auth_users
         )
 
     return StructuredResponse(
@@ -99,6 +111,45 @@ async def update_bot_token(
     config = sm.load_config()
     config["bot_token"] = token
     sm.save_config(config)
+    
+    from api.dependencies import _state
+    if _state.bot_worker:
+        try:
+            await _state.bot_worker.stop()
+        except Exception:
+            pass
+            
+    return StructuredResponse(success=True, data=True)
+
+@router.post("/config/bot-authorized-users", response_model=StructuredResponse[bool])
+async def update_bot_authorized_users(
+    users: str,
+    sm: Annotated[SessionManager, Depends(get_session_manager)]
+):
+    """Updates the Authorized Telegram User IDs."""
+    config = sm.load_config()
+    
+    user_ids = []
+    if users.strip():
+        raw_ids = users.replace(",", "\n").split("\n")
+        for rid in raw_ids:
+            rid = rid.strip()
+            if not rid:
+                continue
+            if not rid.isdigit():
+                raise HTTPException(status_code=400, detail=f"Invalid user ID: {rid}. Must be a numeric value.")
+            user_ids.append(int(rid))
+            
+    config["bot_authorized_users"] = user_ids
+    sm.save_config(config)
+    
+    from api.dependencies import _state
+    if _state.bot_worker:
+        try:
+            await _state.bot_worker.stop()
+        except Exception:
+            pass
+            
     return StructuredResponse(success=True, data=True)
 
 @router.post("/rebuild", response_model=StructuredResponse[dict])

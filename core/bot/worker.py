@@ -374,6 +374,55 @@ class TDriveBotWorker:
         if edit: await event.edit(msg, buttons=buttons, parse_mode='html')
         else: await event.respond(msg, buttons=buttons, parse_mode='html')
 
+    async def is_authorized(self, event) -> bool:
+        """
+        Checks if the event sender is authorized to use the bot.
+        """
+        config = self.sm.load_config()
+        authorized_users = config.get("bot_authorized_users", [])
+        
+        if not authorized_users:
+            return True
+            
+        sender_id = event.sender_id
+        if not sender_id:
+            return False
+            
+        if sender_id in authorized_users:
+            return True
+            
+        sender = None
+        try:
+            sender = await event.get_sender()
+        except Exception:
+            pass
+            
+        username = getattr(sender, 'username', None) if sender else None
+        
+        attempted_action = "unknown"
+        if hasattr(event, 'message') and event.message and event.message.text:
+            attempted_action = event.message.text
+        elif hasattr(event, 'data') and event.data:
+            attempted_action = f"callback:{event.data.decode(errors='ignore')}"
+            
+        from datetime import datetime, timezone
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        logger.warning(
+            f"SECURITY: Unauthorized Telegram access attempt - "
+            f"Timestamp: {timestamp}, "
+            f"User ID: {sender_id}, "
+            f"Username: {username}, "
+            f"Action: {attempted_action}"
+        )
+        
+        if hasattr(event, 'answer'):
+            await event.answer("Unauthorized user.", alert=True)
+        else:
+            await event.respond("Unauthorized user.")
+            
+        return False
+
     async def start(self):
         """Starts the bot client."""
         config = self.sm.load_config()
@@ -396,6 +445,16 @@ class TDriveBotWorker:
             config["api_id"],
             config["api_hash"]
         )
+
+        @self.client.on(events.NewMessage())
+        async def global_message_auth_filter(event):
+            if not await self.is_authorized(event):
+                raise events.StopPropagation()
+
+        @self.client.on(events.CallbackQuery())
+        async def global_callback_auth_filter(event):
+            if not await self.is_authorized(event):
+                raise events.StopPropagation()
 
         @self.client.on(events.NewMessage(pattern='/start'))
         async def start_handler(event):

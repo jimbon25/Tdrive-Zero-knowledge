@@ -113,6 +113,8 @@ class IntegrityInfo(BaseModel):
 class BotInfo(BaseModel):
     is_active: bool
     username: Optional[str] = None
+    has_authorized_user: bool = False
+    authorized_users: Optional[List[int]] = None
 
 class SystemStatus(BaseModel):
     telegram_connected: bool
