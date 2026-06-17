@@ -37,6 +37,7 @@ export interface ServiceStatus {
   load_state: string;
   active_state: string;
   sub_state: string;
+  is_pinned: boolean;
 }
 
 export interface ServiceLogResponse {

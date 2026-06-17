@@ -110,6 +110,7 @@ class ServiceStatus(BaseModel):
     load_state: str
     active_state: str
     sub_state: str
+    is_pinned: bool = False
 
 class ServiceActionRequest(BaseModel):
     action: str  # start, stop, restart, enable, disable

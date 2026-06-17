@@ -21,7 +21,11 @@ import {
   CheckCircle2,
   Lock,
   ShieldAlert,
-  Key
+  Key,
+  Filter,
+  FileQuestion,
+  Pin,
+  PinOff
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -29,18 +33,11 @@ export default function ServerPage() {
   const queryClient = useQueryClient();
   const { isServerUnlocked, setServerUnlocked } = useUIStore();
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<"all" | "active" | "inactive" | "failed" | "not-found">("all");
   const [selectedService, setSelectedService] = React.useState<string | null>(null);
   const [showLogs, setShowLogs] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
   const logEndRef = React.useRef<HTMLDivElement>(null);
-
-  // 0. Auto-lock on unmount
-  React.useEffect(() => {
-    return () => {
-      // Optional: uncomment to lock every time user leaves the page
-      // setServerUnlocked(false);
-    };
-  }, [setServerUnlocked]);
 
   // 1. Fetch Services
   const { data: services, isLoading, isRefetching } = useQuery({
@@ -107,6 +104,21 @@ export default function ServerPage() {
     }
   });
 
+  // 5. Pin Mutation
+  const pinMutation = useMutation({
+    mutationFn: async ({ name, pinned }: { name: string, pinned: boolean }) => {
+      const resp = await api.post(`/system/services/${name}/pin?pinned=${pinned}`);
+      return resp.data;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(variables.pinned ? "Service pinned" : "Service unpinned");
+      queryClient.invalidateQueries({ queryKey: ["server-services"] });
+    },
+    onError: () => {
+      toast.error("Failed to update pin status");
+    }
+  });
+
   if (!isServerUnlocked) {
     return (
       <div className="h-[70vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
@@ -156,15 +168,32 @@ export default function ServerPage() {
     );
   }
 
-  const filteredServices = services?.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Combined Search and Filter Logic
+  const filteredServices = services?.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          s.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = 
+      statusFilter === "all" ? true :
+      statusFilter === "active" ? s.active_state === "active" :
+      statusFilter === "inactive" ? (s.active_state !== "active" && s.load_state !== "not-found") :
+      statusFilter === "failed" ? s.sub_state === "failed" :
+      statusFilter === "not-found" ? s.load_state === "not-found" : true;
+
+    return matchesSearch && matchesFilter;
+  }).sort((a, b) => {
+    // 1. Pinned first
+    if (a.is_pinned && !b.is_pinned) return -1;
+    if (!a.is_pinned && b.is_pinned) return 1;
+    // 2. Alphabetical name
+    return a.name.localeCompare(b.name);
+  });
 
   const stats = {
     total: services?.length || 0,
     active: services?.filter(s => s.active_state === "active").length || 0,
     failed: services?.filter(s => s.sub_state === "failed").length || 0,
+    notFound: services?.filter(s => s.load_state === "not-found").length || 0,
   };
 
   return (
@@ -219,10 +248,53 @@ export default function ServerPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <StatCard icon={Activity} label="Total Services" value={stats.total} color="blue" />
-         <StatCard icon={CheckCircle2} label="Active Services" value={stats.active} color="green" />
-         <StatCard icon={AlertCircle} label="Failed Services" value={stats.failed} color="red" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <StatCard icon={Activity} label="Total" value={stats.total} color="blue" />
+         <StatCard icon={CheckCircle2} label="Active" value={stats.active} color="green" />
+         <StatCard icon={AlertCircle} label="Failed" value={stats.failed} color="red" />
+         <StatCard icon={FileQuestion} label="Not Found" value={stats.notFound} color="gray" />
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+         <div className="flex items-center space-x-1 p-1 bg-neutral-100 dark:bg-neutral-900/50 rounded-xl w-fit border border-neutral-200 dark:border-neutral-800">
+            {[
+               { id: "all", label: "All", count: stats.total },
+               { id: "active", label: "Active", count: stats.active },
+               { id: "inactive", label: "Inactive", count: stats.total - stats.active - stats.notFound },
+               { id: "failed", label: "Failed", count: stats.failed },
+               { id: "not-found", label: "Not Found", count: stats.notFound }
+            ].map((f) => (
+               <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id as any)}
+                  className={cn(
+                     "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all",
+                     statusFilter === f.id 
+                        ? "bg-card text-primary shadow-sm" 
+                        : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
+                  )}
+               >
+                  <span>{f.label}</span>
+                  <span className={cn(
+                     "px-1.5 py-0.5 rounded-md text-[8px]",
+                     statusFilter === f.id ? "bg-primary/10 text-primary" : "bg-neutral-200 dark:bg-neutral-800 text-neutral-400"
+                  )}>
+                     {f.count}
+                  </span>
+               </button>
+            ))}
+         </div>
+         
+         {statusFilter !== "all" && (
+            <button 
+              onClick={() => setStatusFilter("all")}
+              className="text-[10px] font-bold text-primary hover:underline flex items-center space-x-1"
+            >
+               <X size={10} />
+               <span>Clear Filters</span>
+            </button>
+         )}
       </div>
 
       {/* Services Table */}
@@ -231,6 +303,7 @@ export default function ServerPage() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
+                <th className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider w-10"></th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider">Service Name</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider">Status</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase text-neutral-400 tracking-wider text-right">Actions</th>
@@ -239,25 +312,42 @@ export default function ServerPage() {
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-neutral-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-neutral-400">
                     <Loader2 className="animate-spin mx-auto mb-2" size={20} />
                     <p className="text-xs font-bold uppercase tracking-widest">Loading services...</p>
                   </td>
                 </tr>
               ) : filteredServices?.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-neutral-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-neutral-400">
                     <p className="text-xs font-bold uppercase tracking-widest">No services found</p>
                   </td>
                 </tr>
               ) : (
                 filteredServices?.map((service) => (
-                  <tr key={service.name} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50 transition-colors group">
+                  <tr key={service.name} className={cn(
+                    "hover:bg-neutral-50/50 dark:hover:bg-neutral-900/50 transition-colors group",
+                    service.is_pinned && "bg-primary/[0.02] dark:bg-primary/[0.01]"
+                  )}>
+                    <td className="pl-6 py-4">
+                       <button 
+                         onClick={() => pinMutation.mutate({ name: service.name, pinned: !service.is_pinned })}
+                         className={cn(
+                           "transition-all",
+                           service.is_pinned ? "text-primary" : "text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-500"
+                         )}
+                       >
+                          {service.is_pinned ? <Pin size={14} className="fill-current" /> : <Pin size={14} />}
+                       </button>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[200px] sm:max-w-md">
-                          {service.name}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate max-w-[200px] sm:max-w-md">
+                            {service.name}
+                          </span>
+                          {service.is_pinned && <div className="w-1 h-1 bg-primary rounded-full" />}
+                        </div>
                         <span className="text-[10px] text-neutral-500 font-medium truncate max-w-[200px] sm:max-w-md">
                           {service.description}
                         </span>
@@ -265,35 +355,39 @@ export default function ServerPage() {
                     </td>
                     <td className="px-6 py-4">
                        <div className="flex items-center space-x-2">
-                          <StatusBadge state={service.active_state} subState={service.sub_state} />
+                          <StatusBadge state={service.active_state} subState={service.sub_state} loadState={service.load_state} />
                        </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                        <div className="flex items-center justify-end space-x-1">
-                          {service.active_state === "active" ? (
-                            <ActionButton 
-                              icon={Square} 
-                              onClick={() => actionMutation.mutate({ name: service.name, action: "stop" })}
-                              loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
-                              variant="destructive"
-                              title="Stop"
-                            />
-                          ) : (
-                            <ActionButton 
-                              icon={Play} 
-                              onClick={() => actionMutation.mutate({ name: service.name, action: "start" })}
-                              loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
-                              variant="default"
-                              title="Start"
-                            />
+                          {service.load_state !== "not-found" && (
+                            <>
+                              {service.active_state === "active" ? (
+                                <ActionButton 
+                                  icon={Square} 
+                                  onClick={() => actionMutation.mutate({ name: service.name, action: "stop" })}
+                                  loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
+                                  variant="destructive"
+                                  title="Stop"
+                                />
+                              ) : (
+                                <ActionButton 
+                                  icon={Play} 
+                                  onClick={() => actionMutation.mutate({ name: service.name, action: "start" })}
+                                  loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
+                                  variant="default"
+                                  title="Start"
+                                />
+                              )}
+                              <ActionButton 
+                                icon={RotateCcw} 
+                                onClick={() => actionMutation.mutate({ name: service.name, action: "restart" })}
+                                loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
+                                variant="outline"
+                                title="Restart"
+                              />
+                            </>
                           )}
-                          <ActionButton 
-                            icon={RotateCcw} 
-                            onClick={() => actionMutation.mutate({ name: service.name, action: "restart" })}
-                            loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
-                            variant="outline"
-                            title="Restart"
-                          />
                           <ActionButton 
                             icon={Terminal} 
                             onClick={() => {
@@ -379,6 +473,7 @@ function StatCard({ icon: Icon, label, value, color }: any) {
     blue: "bg-blue-500/10 text-blue-500",
     green: "bg-green-500/10 text-green-500",
     red: "bg-red-500/10 text-red-500",
+    gray: "bg-neutral-500/10 text-neutral-500",
   };
 
   return (
@@ -394,9 +489,19 @@ function StatCard({ icon: Icon, label, value, color }: any) {
   );
 }
 
-function StatusBadge({ state, subState }: { state: string, subState: string }) {
+function StatusBadge({ state, subState, loadState }: { state: string, subState: string, loadState: string }) {
+  const isNotFound = loadState === "not-found";
   const isActive = state === "active";
   const isFailed = subState === "failed";
+
+  if (isNotFound) {
+    return (
+      <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full border border-neutral-500/20 bg-neutral-500/10 text-neutral-500 text-[10px] font-black uppercase tracking-tight">
+        <div className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+        <span>Not Found</span>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(

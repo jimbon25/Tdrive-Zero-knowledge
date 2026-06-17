@@ -238,9 +238,14 @@ async def unlock_system(
     return StructuredResponse(success=True, data=True)
 
 @router.get("/services", response_model=StructuredResponse[List[ServiceStatus]])
-async def list_services():
+async def list_services(
+    sm: Annotated[SessionManager, Depends(get_session_manager)]
+):
     """Lists all systemd services and their current status."""
     try:
+        config = sm.load_config()
+        pinned_services = config.get("pinned_services", [])
+
         # Use systemctl to list all service units
         process = await asyncio.create_subprocess_exec(
             "systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager",
@@ -257,14 +262,40 @@ async def list_services():
         for line in lines:
             parts = line.split(None, 4)
             if len(parts) >= 5:
+                name = parts[0]
                 services.append(ServiceStatus(
-                    name=parts[0],
+                    name=name,
                     load_state=parts[1],
                     active_state=parts[2],
                     sub_state=parts[3],
-                    description=parts[4]
+                    description=parts[4],
+                    is_pinned=name in pinned_services
                 ))
         return StructuredResponse(success=True, data=services)
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})
+
+@router.post("/services/{service_name}/pin", response_model=StructuredResponse[bool])
+async def service_pin(
+    service_name: str,
+    pinned: bool,
+    sm: Annotated[SessionManager, Depends(get_session_manager)]
+):
+    """Pins or unpins a systemd service in the dashboard."""
+    try:
+        config = sm.load_config()
+        pinned_list = config.get("pinned_services", [])
+        
+        if pinned:
+            if service_name not in pinned_list:
+                pinned_list.append(service_name)
+        else:
+            if service_name in pinned_list:
+                pinned_list.remove(service_name)
+                
+        config["pinned_services"] = pinned_list
+        sm.save_config(config)
+        return StructuredResponse(success=True, data=pinned)
     except Exception as e:
         return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})
 
