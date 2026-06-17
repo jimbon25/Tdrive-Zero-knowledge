@@ -104,6 +104,23 @@ class FileDetailSchema(FileSchema):
 
 # --- System Models ---
 
+class ServiceStatus(BaseModel):
+    name: str
+    description: str
+    load_state: str
+    active_state: str
+    sub_state: str
+
+class ServiceActionRequest(BaseModel):
+    action: str  # start, stop, restart, enable, disable
+
+class UnlockRequest(BaseModel):
+    password: str
+
+class ServiceLogResponse(BaseModel):
+    service: str
+    logs: List[str]
+
 class IntegrityInfo(BaseModel):
     state: str
     safe_mode: bool

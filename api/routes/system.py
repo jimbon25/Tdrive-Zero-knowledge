@@ -3,13 +3,19 @@ TDrive System Routes.
 """
 
 import logging
-from typing import Annotated
+import asyncio
+import subprocess
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 
 from api.dependencies import get_manager, get_session_manager, validate_csrf
-from api.schemas import SystemStatus, StructuredResponse, IntegrityInfo
+from api.schemas import (
+    SystemStatus, StructuredResponse, IntegrityInfo,
+    ServiceStatus, ServiceActionRequest, ServiceLogResponse,
+    UnlockRequest
+)
 from core.db.session import DatabaseSession
 from core.db.manager import DBManager
 from core.manager import TDriveManager
@@ -216,3 +222,90 @@ async def heal_system_metadata(
             logging.error(f"Manual healing failed for {fid}: {e}")
                 
     return StructuredResponse(success=True, data={"healed_count": count})
+
+@router.post("/unlock", response_model=StructuredResponse[bool])
+async def unlock_system(
+    request: UnlockRequest,
+    sm: Annotated[SessionManager, Depends(get_session_manager)]
+):
+    """Verifies the master password for elevated access."""
+    is_valid = sm.verify_password(request.password)
+    if not is_valid:
+        return StructuredResponse(
+            success=False, 
+            error={"code": "INVALID_PASSWORD", "message": "Invalid master password."}
+        )
+    return StructuredResponse(success=True, data=True)
+
+@router.get("/services", response_model=StructuredResponse[List[ServiceStatus]])
+async def list_services():
+    """Lists all systemd services and their current status."""
+    try:
+        # Use systemctl to list all service units
+        process = await asyncio.create_subprocess_exec(
+            "systemctl", "list-units", "--type=service", "--all", "--no-legend", "--no-pager",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            return StructuredResponse(success=False, error={"code": "SYSTEMCTL_ERROR", "message": stderr.decode()})
+            
+        services = []
+        lines = stdout.decode().strip().split('\n')
+        for line in lines:
+            parts = line.split(None, 4)
+            if len(parts) >= 5:
+                services.append(ServiceStatus(
+                    name=parts[0],
+                    load_state=parts[1],
+                    active_state=parts[2],
+                    sub_state=parts[3],
+                    description=parts[4]
+                ))
+        return StructuredResponse(success=True, data=services)
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})
+
+@router.post("/services/{service_name}/action", response_model=StructuredResponse[bool])
+async def service_action(service_name: str, request: ServiceActionRequest):
+    """Performs an action (start, stop, restart, enable, disable) on a systemd service."""
+    allowed_actions = ["start", "stop", "restart", "enable", "disable"]
+    if request.action not in allowed_actions:
+        raise HTTPException(status_code=400, detail="Invalid action")
+        
+    try:
+        # Note: This requires sudo permissions without password for the user running the agent
+        process = await asyncio.create_subprocess_exec(
+            "sudo", "systemctl", request.action, service_name,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            return StructuredResponse(success=False, error={"code": "SYSTEMCTL_ERROR", "message": stderr.decode().strip()})
+            
+        return StructuredResponse(success=True, data=True)
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})
+
+@router.get("/services/{service_name}/logs", response_model=StructuredResponse[ServiceLogResponse])
+async def get_service_logs(service_name: str, lines: int = 100):
+    """Retrieves the recent logs for a specific systemd service."""
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "journalctl", "-u", service_name, "-n", str(lines), "--no-pager",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            return StructuredResponse(success=False, error={"code": "JOURNALCTL_ERROR", "message": stderr.decode().strip()})
+            
+        logs = stdout.decode().strip().split('\n')
+        return StructuredResponse(success=True, data=ServiceLogResponse(service=service_name, logs=logs))
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})

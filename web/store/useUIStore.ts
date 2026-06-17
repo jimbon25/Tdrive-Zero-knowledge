@@ -18,6 +18,9 @@ interface UIState {
   
   // Search
   searchQuery: string;
+
+  // Security
+  isServerUnlocked: boolean;
   
   // Jobs
   activeUploads: string[]; // Job IDs
@@ -32,6 +35,7 @@ interface UIState {
   setDensity: (density: UIDensity) => void;
   setViewMode: (mode: "grid" | "list") => void;
   setSearchQuery: (query: string) => void;
+  setServerUnlocked: (unlocked: boolean) => void;
   addActiveUpload: (jobId: string) => void;
   removeActiveUpload: (jobId: string) => void;
 }
@@ -48,6 +52,7 @@ export const useUIStore = create<UIState>()(
       viewMode: "list",
       
       searchQuery: "",
+      isServerUnlocked: false,
       activeUploads: [],
       
       setDesktopSidebarOpen: (open) => set({ isDesktopSidebarOpen: open }),
@@ -61,6 +66,7 @@ export const useUIStore = create<UIState>()(
       setDensity: (density) => set({ density }),
       setViewMode: (mode) => set({ viewMode: mode }),
       setSearchQuery: (query) => set({ searchQuery: query }),
+      setServerUnlocked: (unlocked) => set({ isServerUnlocked: unlocked }),
       
       addActiveUpload: (jobId) =>
         set((state) => ({

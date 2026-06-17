@@ -29,6 +29,21 @@ export interface Job {
   updated_at: string;
 }
 
+// --- System Types ---
+
+export interface ServiceStatus {
+  name: string;
+  description: string;
+  load_state: string;
+  active_state: string;
+  sub_state: string;
+}
+
+export interface ServiceLogResponse {
+  service: string;
+  logs: string[];
+}
+
 export interface SystemStatus {
   telegram_connected: boolean;
   sqlite_healthy: boolean;
