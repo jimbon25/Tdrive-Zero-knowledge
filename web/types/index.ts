@@ -45,6 +45,13 @@ export interface ServiceLogResponse {
   logs: string[];
 }
 
+export interface AuthorizedUserInfo {
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export interface SystemStatus {
   telegram_connected: boolean;
   telegram_username?: string;
@@ -69,6 +76,7 @@ export interface SystemStatus {
     username: string | null;
     has_authorized_user?: boolean;
     authorized_users?: number[];
+    authorized_user_details?: AuthorizedUserInfo[];
   };
   features?: {
     core: FeatureInfo[];

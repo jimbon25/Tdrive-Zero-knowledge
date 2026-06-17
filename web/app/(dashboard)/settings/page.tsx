@@ -271,8 +271,27 @@ export default function SettingsPage() {
                 </div>
 
                 {status.bot.has_authorized_user ? (
-                  <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400 font-bold bg-green-500/5 p-3 border border-green-500/10 rounded-xl">
-                    <span>✓ Authorized User Configured</span>
+                  <div className="flex flex-col space-y-2 p-3 bg-green-500/5 border border-green-500/10 rounded-xl">
+                    <div className="flex items-center space-x-2 text-xs text-green-600 dark:text-green-400 font-bold">
+                       <span>✓ Authorized Users</span>
+                    </div>
+                    <div className="space-y-1">
+                      {status.bot.authorized_user_details?.map((user: any) => (
+                        <div key={user.id} className="flex items-center justify-between text-[11px] bg-white/50 dark:bg-black/20 p-1.5 px-2 rounded-lg border border-neutral-100 dark:border-neutral-800">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-neutral-700 dark:text-neutral-300">
+                              {user.username ? `@${user.username}` : (user.first_name || user.id)}
+                            </span>
+                            {user.first_name && (
+                              <span className="text-neutral-400">
+                                ({user.first_name}{user.last_name ? ` ${user.last_name}` : ''})
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] font-mono text-neutral-400">ID: {user.id}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col space-y-1 p-3 bg-amber-500/5 border border-amber-500/10 text-amber-700 dark:text-amber-400 rounded-xl text-xs font-medium">

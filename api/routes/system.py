@@ -81,13 +81,45 @@ async def get_status(
     bot_info = None
     config = sm.load_config()
     auth_users = config.get("bot_authorized_users", [])
+    auth_user_details = []
+
+    # Try to fetch details for authorized users if bot is active
+    if auth_users:
+        for uid in auth_users:
+            # Check cache first
+            if uid in _state.user_cache:
+                auth_user_details.append(_state.user_cache[uid])
+                continue
+            
+            # If not in cache and bot is online, try to fetch
+            if _state.bot_worker and _state.bot_worker.is_connected():
+                try:
+                    user = await _state.bot_worker.client.get_entity(uid)
+                    from api.schemas import AuthorizedUserInfo
+                    detail = AuthorizedUserInfo(
+                        id=user.id,
+                        username=user.username,
+                        first_name=user.first_name,
+                        last_name=user.last_name
+                    )
+                    _state.user_cache[uid] = detail.model_dump()
+                    auth_user_details.append(detail.model_dump())
+                except Exception as e:
+                    logging.warning(f"Failed to fetch details for user {uid}: {e}")
+                    # Fallback to ID only
+                    auth_user_details.append({"id": uid})
+            else:
+                # Bot offline, fallback to ID
+                auth_user_details.append({"id": uid})
+
     if _state.bot_worker:
         from api.schemas import BotInfo
         bot_info = BotInfo(
             is_active=_state.bot_worker.is_connected(),
             username=_state.bot_worker.username,
             has_authorized_user=len(auth_users) > 0,
-            authorized_users=auth_users
+            authorized_users=auth_users,
+            authorized_user_details=auth_user_details
         )
     elif config.get("bot_token"):
         from api.schemas import BotInfo
@@ -95,7 +127,8 @@ async def get_status(
             is_active=False,
             username=None,
             has_authorized_user=len(auth_users) > 0,
-            authorized_users=auth_users
+            authorized_users=auth_users,
+            authorized_user_details=auth_user_details
         )
 
     return StructuredResponse(

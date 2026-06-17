@@ -133,6 +133,13 @@ class BotInfo(BaseModel):
     username: Optional[str] = None
     has_authorized_user: bool = False
     authorized_users: Optional[List[int]] = None
+    authorized_user_details: Optional[List["AuthorizedUserInfo"]] = None
+
+class AuthorizedUserInfo(BaseModel):
+    id: int
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class SystemStatus(BaseModel):
     telegram_connected: bool

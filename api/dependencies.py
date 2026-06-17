@@ -56,6 +56,9 @@ class AppState:
     upload_locks: Dict[str, asyncio.Lock] = {}
     client_lock = asyncio.Lock()
     
+    # Cache for Telegram User Info
+    user_cache: Dict[int, Dict[str, Any]] = {}
+
     # Brute-force tracking
     login_failures: int = 0
     lockout_until: Optional[datetime] = None
