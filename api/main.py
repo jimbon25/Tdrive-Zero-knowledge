@@ -336,7 +336,7 @@ async def view_by_ticket(
         size = f_rec.size
 
     # MIME Type Logic
-    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]
+    image_exts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif"]
     pdf_exts = [".pdf"]
     text_exts = [".txt", ".md", ".json", ".yaml", ".yml", ".log", ".csv"]
 

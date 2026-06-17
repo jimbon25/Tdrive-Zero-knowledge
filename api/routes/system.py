@@ -5,9 +5,11 @@ TDrive System Routes.
 import logging
 import asyncio
 import subprocess
+import base64
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy import text
 
 from api.dependencies import get_manager, get_session_manager, validate_csrf
@@ -58,6 +60,22 @@ async def get_status(
     
     registry = FeatureRegistry(sm)
 
+    # Get Telegram Profile if connected
+    tg_username = None
+    tg_photo_b64 = None
+    if manager.tg_client.client.is_connected():
+        try:
+            me = await manager.tg_client.client.get_me()
+            if me:
+                tg_username = me.username or f"{me.first_name or ''} {me.last_name or ''}".strip() or str(me.id)
+                
+                # Download profile photo as bytes and convert to base64
+                photo_bytes = await manager.tg_client.client.download_profile_photo('me', file=bytes)
+                if photo_bytes:
+                    tg_photo_b64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode()}"
+        except Exception as e:
+            logging.error(f"Failed to fetch Telegram profile: {e}")
+
     # Bot Status
     from api.dependencies import _state
     bot_info = None
@@ -84,6 +102,8 @@ async def get_status(
         success=True,
         data=SystemStatus(
             telegram_connected=manager.tg_client.client.is_connected(),
+            telegram_username=tg_username,
+            telegram_profile_photo=tg_photo_b64,
             session_valid=True,
             sqlite_healthy=sqlite_healthy,
             config_exists=True,
@@ -188,22 +208,44 @@ async def audit_integrity(
 
 @router.post("/cleanup", response_model=StructuredResponse[dict])
 async def cleanup_system(
+    background_tasks: BackgroundTasks,
     manager: Annotated[TDriveManager, Depends(get_manager)],
     sm: Annotated[SessionManager, Depends(get_session_manager)]
 ):
-    from core.recovery import RecoveryEngine
-    engine = RecoveryEngine(manager.db_session, manager.tg_client, manager.channel_id, master_password=manager.master_password, session_manager=sm)
-    deleted_count = await engine.cleanup_orphans()
-    return StructuredResponse(success=True, data={"deleted_count": deleted_count})
+    """
+    Deletes orphaned TDrive messages from Telegram in the background.
+    """
+    async def perform_cleanup(mgr: TDriveManager, s_mgr: SessionManager):
+        from core.recovery import RecoveryEngine
+        try:
+            engine = RecoveryEngine(mgr.db_session, mgr.tg_client, mgr.channel_id, master_password=mgr.master_password, session_manager=s_mgr)
+            deleted_count = await engine.cleanup_orphans()
+            logging.info(f"Background cleanup completed: {deleted_count} orphans removed.")
+        except Exception as e:
+            logging.error(f"Background cleanup failed: {e}")
+
+    background_tasks.add_task(perform_cleanup, manager, sm)
+    return StructuredResponse(success=True, data={"message": "Cleanup process started in background"})
 
 @router.post("/heal", response_model=StructuredResponse[dict])
 async def heal_system_metadata(
+    background_tasks: BackgroundTasks,
     manager: Annotated[TDriveManager, Depends(get_manager)],
     sm: Annotated[SessionManager, Depends(get_session_manager)]
 ):
     """
     Triggers a background scan to heal metadata and thumbnails for all files.
     """
+    async def perform_heal(mgr: TDriveManager, cache_dir: Path, file_ids: list):
+        count = 0
+        for fid in file_ids:
+            try:
+                await mgr.get_preview_file(fid, cache_dir)
+                count += 1
+            except Exception as e:
+                logging.error(f"Background healing failed for {fid}: {e}")
+        logging.info(f"Background healing completed: {count} items processed.")
+
     to_heal_ids = []
     with manager.db_session.get_session() as session:
         from core.db.manager import DBManager
@@ -213,15 +255,10 @@ async def heal_system_metadata(
             if not f.is_folder and (not f.is_materialized or not f.thumbnail or f.sha256 in ["pending", "unknown", f.file_id]):
                 to_heal_ids.append(f.file_id)
         
-    count = 0
-    for fid in to_heal_ids:
-        try:
-            await manager.get_preview_file(fid, sm.preview_cache_dir)
-            count += 1
-        except Exception as e:
-            logging.error(f"Manual healing failed for {fid}: {e}")
+    if to_heal_ids:
+        background_tasks.add_task(perform_heal, manager, sm.preview_cache_dir, to_heal_ids)
                 
-    return StructuredResponse(success=True, data={"healed_count": count})
+    return StructuredResponse(success=True, data={"healed_count": len(to_heal_ids), "message": "Healing process started in background"})
 
 @router.post("/unlock", response_model=StructuredResponse[bool])
 async def unlock_system(

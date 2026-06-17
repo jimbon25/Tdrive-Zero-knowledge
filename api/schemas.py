@@ -136,6 +136,8 @@ class BotInfo(BaseModel):
 
 class SystemStatus(BaseModel):
     telegram_connected: bool
+    telegram_username: Optional[str] = None
+    telegram_profile_photo: Optional[str] = None
     sqlite_healthy: bool
     session_valid: bool
     config_exists: bool

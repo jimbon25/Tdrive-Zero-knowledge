@@ -28,9 +28,11 @@ def generate_thumbnail(file_path: Path) -> Optional[str]:
     try:
         from PIL import Image
         import ffmpeg
+        from pillow_heif import register_heif_opener
+        register_heif_opener()
         
         ext = file_path.suffix.lower()
-        image_exts = [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+        image_exts = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif"]
         video_exts = [".mp4", ".mkv", ".mov", ".avi", ".wmv", ".flv", ".webm"]
 
         # --- Case 1: Image Files ---

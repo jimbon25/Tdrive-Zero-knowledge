@@ -39,7 +39,7 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
   const starMutation = useStarFile();
 
   const fileExt = file.filename.split(".").pop()?.toLowerCase() || "";
-  const isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(fileExt);
+  const isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif"].includes(fileExt);
   const isPDF = fileExt === "pdf";
   const isText = ["txt", "md", "json", "yaml", "yml", "log", "csv"].includes(fileExt);
 

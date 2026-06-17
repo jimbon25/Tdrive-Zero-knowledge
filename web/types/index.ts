@@ -47,6 +47,8 @@ export interface ServiceLogResponse {
 
 export interface SystemStatus {
   telegram_connected: boolean;
+  telegram_username?: string;
+  telegram_profile_photo?: string;
   sqlite_healthy: boolean;
   session_valid: boolean;
   config_exists: boolean;
