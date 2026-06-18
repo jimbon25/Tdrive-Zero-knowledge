@@ -142,7 +142,8 @@ async def validate_integrity(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Bulk operations are disabled.")
 
     if "/api/v1/developer" in path and not registry.is_enabled(FeatureID.DEVELOPER_CONSOLE):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Developer Console is disabled.")
+        if not any(p in path for p in ["/developer/status", "/developer/config/dev-mode"]):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Developer Console is disabled.")
 
     # 2. Integrity State Checks
     if method in ["POST", "PUT", "PATCH", "DELETE"]:
