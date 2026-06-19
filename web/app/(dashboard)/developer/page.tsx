@@ -213,7 +213,7 @@ export default function DeveloperPage() {
       </div>
 
       {/* Sticky Scrollable Tabs */}
-      <div className="sticky top-[64px] z-30 -mx-4 px-4 bg-background/80 backdrop-blur-md py-1.5">
+      <div className="sticky top-[64px] z-30 bg-background/80 backdrop-blur-md py-1.5 -mx-1 px-1">
         <div className="relative group">
           <div className="flex items-center space-x-1 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl overflow-x-auto no-scrollbar snap-x snap-mandatory">
             {(["overview", "logs", "performance", "jobs", "trash", "previews", "database", "telegram"] as Tab[]).map((tab) => (

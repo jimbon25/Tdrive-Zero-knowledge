@@ -7,6 +7,7 @@ import { api } from "@/lib/axios";
 import toast from "react-hot-toast";
 import { useUIStore } from "@/store/useUIStore";
 import { cn, Button } from "@/components/ui";
+import { Dialog } from "@/components/ui/Dialog";
 import { useRouter } from "next/navigation";
 
 interface NewActionMenuProps {
@@ -348,70 +349,71 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
       )}
 
       {/* Duplicate Warning Dialog */}
-      {currentDuplicate && (
-        <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center space-x-3 text-amber-500">
-              <div className="p-2 bg-amber-500/10 rounded-xl">
-                <AlertTriangle size={24} />
-              </div>
-              <h3 className="text-lg font-black tracking-tight text-neutral-900 dark:text-white">Duplicate File Warning</h3>
+      <Dialog
+        isOpen={!!currentDuplicate}
+        onClose={() => handleDuplicateResolve('cancel')}
+      >
+        <div className="p-8 space-y-6 text-left">
+          <div className="flex items-center space-x-3 text-amber-500">
+            <div className="p-2 bg-amber-500/10 rounded-xl">
+              <AlertTriangle size={24} />
             </div>
+            <h3 className="text-lg font-black tracking-tight text-neutral-900 dark:text-white">Duplicate File Warning</h3>
+          </div>
 
-            <div className="space-y-3">
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                A file with the exact same content (SHA256) already exists in your storage.
-              </p>
+          <div className="space-y-3">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+              A file with the exact same content (SHA256) already exists in your storage.
+            </p>
+            
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 space-y-2 text-xs">
+              <div>
+                <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">File to upload</span>
+                <span className="font-bold text-neutral-850 dark:text-neutral-200 break-all">{currentDuplicate?.file.name}</span>
+                <span className="text-neutral-400 ml-1">({currentDuplicate ? formatSize(currentDuplicate.file.size) : ""})</span>
+              </div>
               
-              <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 space-y-2 text-xs">
-                <div>
-                  <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">File to upload</span>
-                  <span className="font-bold text-neutral-850 dark:text-neutral-200 break-all">{currentDuplicate.file.name}</span>
-                  <span className="text-neutral-400 ml-1">({formatSize(currentDuplicate.file.size)})</span>
-                </div>
-                
-                <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-2" />
+              <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-2" />
 
-                <div>
-                  <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">Existing file location</span>
-                  <span className="font-bold text-neutral-800 dark:text-neutral-200 break-all">{currentDuplicate.existingFile.filename}</span>
-                  <div className="text-neutral-400 mt-0.5 flex items-center space-x-1">
-                    <span>Folder:</span>
-                    <span className="underline italic">{currentDuplicate.existingFile.virtual_path}</span>
-                  </div>
+              <div>
+                <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">Existing file location</span>
+                <span className="font-bold text-neutral-800 dark:text-neutral-200 break-all">{currentDuplicate?.existingFile.filename}</span>
+                <div className="text-neutral-400 mt-0.5 flex items-center space-x-1">
+                  <span>Folder:</span>
+                  <span className="underline italic">{currentDuplicate?.existingFile.virtual_path}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="default"
-                className="w-full rounded-xl font-bold h-11 flex items-center justify-center space-x-2 shadow-lg shadow-primary/10"
-                onClick={() => handleDuplicateResolve('open')}
-              >
-                <span>Open Existing File</span>
-                <ExternalLink size={16} />
-              </Button>
-              
-              <Button
-                variant="outline"
-                className="w-full rounded-xl font-bold h-11 border-neutral-200 dark:border-neutral-800"
-                onClick={() => handleDuplicateResolve('anyway')}
-              >
-                Upload Anyway
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="w-full rounded-xl font-bold h-11 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                onClick={() => handleDuplicateResolve('cancel')}
-              >
-                Cancel
-              </Button>
             </div>
           </div>
+
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="default"
+              className="w-full rounded-xl font-bold h-11 flex items-center justify-center space-x-2 shadow-lg shadow-primary/10"
+              onClick={() => handleDuplicateResolve('open')}
+            >
+              <span>Open Existing File</span>
+              <ExternalLink size={16} />
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="w-full rounded-xl font-bold h-11 border-neutral-200 dark:border-neutral-800"
+              onClick={() => handleDuplicateResolve('anyway')}
+            >
+              Upload Anyway
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full rounded-xl font-bold h-11 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              onClick={() => handleDuplicateResolve('cancel')}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

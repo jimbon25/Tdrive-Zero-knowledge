@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { FileItem as FileType } from "@/types";
 import { 
   X, 
@@ -36,6 +37,7 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
   const [error, setError] = React.useState<string | null>(null);
   const [isCopied, setIsCopied] = React.useState(false);
   const [ticket, setTicket] = React.useState<string | null>(null);
+  const [mounted, setMounted] = React.useState(false);
   const starMutation = useStarFile();
 
   const fileExt = file.filename.split(".").pop()?.toLowerCase() || "";
@@ -46,6 +48,10 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
   const previewUrl = ticket ? `${api.defaults.baseURL}/view/${ticket}` : null;
 
   React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
       setError(null);
@@ -54,17 +60,25 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
       setTicket(null);
       
       handleAcquireTicket();
+
+      document.body.style.overflow = "hidden";
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", handleEsc);
+      return () => {
+        document.body.style.overflow = "unset";
+        window.removeEventListener("keydown", handleEsc);
+      };
     }
-  }, [isOpen, file.file_id]);
+  }, [isOpen, file.file_id, onClose]);
 
   const handleAcquireTicket = async () => {
     try {
-      // 1. Get a short-lived ticket (Authenticated request)
       const response = await api.post(`/files/${file.file_id}/ticket`);
       const { ticket: newTicket } = response.data.data;
       setTicket(newTicket);
 
-      // 2. If text, fetch content immediately using the ticket
       if (isText) {
         const textResponse = await api.get(`/view/${newTicket}`, { responseType: 'text' });
         setTextContent(textResponse.data);
@@ -85,10 +99,10 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-[150] flex flex-col bg-neutral-950/95 backdrop-blur-md animate-in fade-in duration-200 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[900] flex flex-col bg-neutral-950/95 backdrop-blur-md animate-in fade-in duration-200 overflow-hidden">
       {/* 1. Top Bar */}
       <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-white/10 z-20 shrink-0 text-white">
         <div className="flex items-center space-x-4 min-w-0 pr-8">
@@ -232,6 +246,7 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
           End-to-End Encrypted Preview
         </p>
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }

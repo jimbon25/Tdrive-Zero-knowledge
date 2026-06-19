@@ -1,6 +1,16 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 /**
  * TDrive Shared Utilities.
  */
+
+/**
+ * Merges Tailwind classes safely.
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 /**
  * Formats a UTC date/time string or object into the browser's local timezone

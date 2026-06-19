@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { FileItem as FileType } from "@/types";
 import { 
   File, 
@@ -11,13 +12,11 @@ import {
   Info,
   Folder,
   X,
-  Eye,
   FileImage,
   FileText,
   FileArchive,
   Edit2,
   RotateCcw,
-  History,
   CheckCircle2,
   Circle,
   Star,
@@ -31,7 +30,6 @@ import { useUIStore } from "@/store/useUIStore";
 import { useSelectionStore } from "@/store/useSelectionStore";
 import { useStarFile } from "@/hooks/api/useFiles";
 import { cn, Button } from "@/components/ui";
-import { format } from "date-fns";
 import { formatLocalTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { PreviewModal } from "./PreviewModal";
@@ -53,7 +51,7 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
   const router = useRouter();
   const { confirm, prompt, addNotification } = useNotificationStore();
   const { density } = useUIStore();
-  const { selectedIds, toggleSelection, isSelectionMode, setSelectionMode } = useSelectionStore();
+  const { selectedIds, toggleSelection, isSelectionMode } = useSelectionStore();
   const starMutation = useStarFile();
 
   const isSelected = selectedIds.includes(file.file_id);
@@ -200,22 +198,18 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
   };
 
   const handleItemClick = (e: React.MouseEvent) => {
-    // 1. If in selection mode or using modifier keys, just toggle selection
     if (isSelectionMode || e.ctrlKey || e.metaKey) {
        e.preventDefault();
        toggleSelection(file.file_id);
        return;
     }
 
-    // 2. Navigation for Folders
     if (file.is_folder) {
       const cleanPath = currentPath === "/" ? "" : currentPath;
       router.push(`/files${cleanPath}/${file.filename}`);
       return;
     }
 
-    // 3. Selection for Files (Klik sekali = Select/Highlight)
-    // Double click or long-press handles opening/actions
     toggleSelection(file.file_id);
   };
 
@@ -250,8 +244,6 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
     return <File className="text-neutral-400" size={viewMode === "grid" ? 28 : 18} />;
   };
 
-  // --- RENDERING ---
-
   const isCompact = density === "compact";
 
   if (viewMode === "grid") {
@@ -269,7 +261,6 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
           isTrashView && "opacity-80 grayscale-[0.3]"
         )}
       >
-        {/* Checkbox Overlay */}
         <div 
           onClick={handleCheckboxClick}
           className={cn(
@@ -332,6 +323,7 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
           onRename={handleRename}
           onRestore={() => restoreMutation.mutate()}
           onStar={handleToggleStar}
+          onMove={() => setIsMoveOpen(true)}
           isDownloading={isDownloading}
           isDeleting={isTrashView ? permanentDeleteMutation.isPending : trashMutation.isPending}
           isRenaming={renameMutation.isPending}
@@ -346,6 +338,15 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
             onClose={() => setIsPreviewOpen(false)}
             onDownload={handleDownload}
             onDelete={handleDelete}
+          />
+        )}
+
+        {!isTrashView && (
+          <MoveDialog
+            isOpen={isMoveOpen}
+            onClose={() => setIsMoveOpen(false)}
+            items={[file]}
+            currentPath={currentPath}
           />
         )}
       </div>
@@ -367,7 +368,6 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
       )}
     >
       <div className="col-span-6 flex items-center min-w-0">
-        {/* List View Checkbox */}
         <div 
           onClick={handleCheckboxClick}
           className={cn(
@@ -525,11 +525,16 @@ function ActionMenu({
   isStarring,
   formatSize
 }: any) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = React.useState(false);
 
-  return (
-    <div className="fixed inset-0 z-[150] flex flex-col justify-end md:justify-center items-center p-0 md:p-6 animate-in fade-in duration-200">
-      {/* Universal Backdrop */}
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[800] flex flex-col justify-end md:justify-center items-center p-0 md:p-6 animate-in fade-in duration-200">
       <div 
         className="absolute inset-0 bg-neutral-950/60 backdrop-blur-sm" 
         onClick={onClose} 
@@ -583,7 +588,7 @@ function ActionMenu({
                 <button 
                   onClick={onDownload}
                   disabled={isDownloading}
-                  className="w-full flex items-center space-x-3 p-3 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-all active:scale-95"
+                  className="w-full flex items-center space-x-3 p-3 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-xl transition-all active:scale-95"
                 >
                   <div className="text-primary p-2 bg-primary/10 rounded-lg"><Download size={18} /></div>
                   <span className="text-xs font-bold">Download File</span>
@@ -641,6 +646,7 @@ function ActionMenu({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

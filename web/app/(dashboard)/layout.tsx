@@ -22,9 +22,8 @@ export default function DashboardLayout({
   } = useUIStore();
 
   return (
-    <div className="flex h-screen w-full bg-background overflow-hidden relative font-sans text-neutral-900 dark:text-neutral-100">
-      {/* 1. Global Notification & Dialog Layer */}
-      <DialogProvider />
+    <div className="flex flex-col h-screen w-full bg-background overflow-hidden relative font-sans text-neutral-900 dark:text-neutral-100">
+      {/* 1. Global Layer */}
       <FloatingQueue />
 
       {/* 2. MOBILE DRAWER OVERLAY */}
@@ -43,32 +42,32 @@ export default function DashboardLayout({
         <Sidebar isMobile={true} />
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
-        {/* 4. HEADER (64px fixed) */}
-        <IntegrityBanner />
-        <Header />
+      {/* 4. HEADER (Fixed height, no sticky inside flex-col) */}
+      <IntegrityBanner />
+      <Header />
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* 5. DESKTOP SIDEBAR */}
-          <div className={cn(
-            "hidden md:flex h-full transition-all duration-300 overflow-hidden",
-            isDesktopSidebarOpen ? "w-[220px]" : "w-0"
-          )}>
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* 5. DESKTOP SIDEBAR */}
+        <aside className={cn(
+          "hidden md:flex flex-col h-full bg-card border-r border-neutral-100 dark:border-neutral-800 transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+          isDesktopSidebarOpen ? "w-[220px]" : "w-0 border-r-0"
+        )}>
+          <div className="w-[220px] h-full">
             <Sidebar isMobile={false} />
           </div>
+        </aside>
 
-          {/* 6. MAIN CONTENT */}
-          <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth pb-20 md:pb-6">
-              <div className="w-full max-w-[1600px] mx-auto p-3 md:p-4 lg:p-6">
-                {children}
-              </div>
+        {/* 6. MAIN CONTENT */}
+        <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth pb-20 md:pb-6">
+            <div className="w-full max-w-[1600px] mx-auto p-3 md:p-4 lg:p-6">
+              {children}
             </div>
-            
-            {/* 7. MOBILE BOTTOM NAV */}
-            <BottomNav />
-          </main>
-        </div>
+          </div>
+          
+          {/* 7. MOBILE BOTTOM NAV */}
+          <BottomNav />
+        </main>
       </div>
     </div>
   );

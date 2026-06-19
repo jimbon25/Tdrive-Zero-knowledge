@@ -65,9 +65,8 @@ export function Sidebar({ isMobile = false }: SidebarProps) {
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-card select-none",
-      !isMobile && "border-r border-neutral-100 dark:border-neutral-800",
-      isMobile ? "w-full" : (isDesktopSidebarOpen ? "w-[220px]" : "w-0")
+      "flex flex-col h-full bg-card select-none w-full",
+      isMobile ? "w-full" : "w-[220px]"
     )}>
       {/* 1. Navigation Container */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-none">

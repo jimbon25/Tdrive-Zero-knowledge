@@ -9,10 +9,10 @@ import {
   ChevronRight, 
   Search, 
   Loader2,
-  FolderOpen,
   HelpCircle
 } from "lucide-react";
 import { Button, cn, Input } from "@/components/ui";
+import { Dialog } from "@/components/ui/Dialog";
 import { api } from "@/lib/axios";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,8 +49,6 @@ export function MoveDialog({ isOpen, onClose, items, currentPath }: MoveDialogPr
       setExpandedPaths(new Set(["/"]));
     }
   }, [isOpen, currentPath]);
-
-  if (!isOpen) return null;
 
   const isInvalidDestination = (destPath: string) => {
     return items.some(item => {
@@ -219,132 +217,129 @@ export function MoveDialog({ isOpen, onClose, items, currentPath }: MoveDialogPr
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-neutral-950/40 backdrop-blur-[2px]" onClick={onClose} />
-      
-      {/* Modal Card */}
-      <div className="relative bg-card w-full max-w-md rounded-[2rem] shadow-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0">
-          <div className="space-y-1">
-            <h3 className="text-lg font-black tracking-tight leading-tight">
-              {items.length === 1 ? "Move Item" : `Move ${items.length} Items`}
-            </h3>
-            <p className="text-xs text-neutral-400 font-bold">
-              Select destination folder
-            </p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-2 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full transition-colors"
-          >
-            <X size={20} />
-          </button>
+    <Dialog 
+      isOpen={isOpen} 
+      onClose={onClose}
+      className="max-w-md max-h-[85vh]"
+    >
+      {/* Header */}
+      <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0">
+        <div className="space-y-1">
+          <h3 className="text-lg font-black tracking-tight leading-tight">
+            {items.length === 1 ? "Move Item" : `Move ${items.length} Items`}
+          </h3>
+          <p className="text-xs text-neutral-400 font-bold">
+            Select destination folder
+          </p>
         </div>
+        <button 
+          onClick={onClose}
+          className="p-2 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full transition-colors"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-        {/* Content Body */}
-        {!showConfirm ? (
-          <>
-            {/* Search Input */}
-            <div className="px-6 pt-4 pb-2 shrink-0">
-              <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                <Input 
-                  placeholder="Search folders..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-11 pr-4 h-11 rounded-xl border-neutral-200 focus:ring-primary/20 text-sm"
-                />
+      {/* Content Body */}
+      {!showConfirm ? (
+        <>
+          {/* Search Input */}
+          <div className="px-6 pt-4 pb-2 shrink-0">
+            <div className="relative">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Input 
+                placeholder="Search folders..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 pr-4 h-11 rounded-xl border-neutral-200 focus:ring-primary/20 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Folder Tree Scrollable Container */}
+          <div className="flex-1 overflow-y-auto px-6 py-2 min-h-[200px] scrollbar-thin">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
+                <Loader2 className="animate-spin mb-2" size={28} />
+                <span className="text-xs font-bold">Loading folders...</span>
               </div>
-            </div>
-
-            {/* Folder Tree Scrollable Container */}
-            <div className="flex-1 overflow-y-auto px-6 py-2 min-h-[180px] scrollbar-thin">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-neutral-400">
-                  <Loader2 className="animate-spin mb-2" size={28} />
-                  <span className="text-xs font-bold">Loading folders...</span>
-                </div>
-              ) : error ? (
-                <div className="flex items-center space-x-2 py-8 text-destructive text-sm font-bold justify-center">
-                  <span>Failed to load folders.</span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {/* Root Drive Node */}
-                  {renderTreeNode(folderTree, 0)}
-                </div>
-              )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/10">
-              <span className="text-xs font-bold text-neutral-400 truncate max-w-[180px]">
-                To: <span className="text-neutral-700 dark:text-neutral-200 font-black">{selectedPath === "/" ? "My Drive" : selectedPath}</span>
-              </span>
-              <div className="flex space-x-2 shrink-0">
-                <Button 
-                  variant="ghost" 
-                  className="rounded-xl h-11 px-4 font-bold text-neutral-500 text-xs"
-                  onClick={onClose}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="default" 
-                  disabled={isInvalidDestination(selectedPath)}
-                  className="rounded-xl h-11 px-6 font-bold shadow-lg shadow-primary/20 text-xs"
-                  onClick={() => setShowConfirm(true)}
-                >
-                  Move Here
-                </Button>
+            ) : error ? (
+              <div className="flex items-center space-x-2 py-8 text-destructive text-sm font-bold justify-center">
+                <span>Failed to load folders.</span>
               </div>
-            </div>
-          </>
-        ) : (
-          /* Confirmation Screen */
-          <div className="p-8 space-y-6 text-center animate-in fade-in duration-200">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-              <HelpCircle size={32} />
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-lg font-black tracking-tight">Confirm Move</h3>
-              <p className="text-sm text-neutral-500 font-medium leading-relaxed px-4">
-                {getConfirmationMessage()}
-              </p>
-            </div>
+            ) : (
+              <div className="space-y-1 pb-4">
+                {/* Root Drive Node */}
+                {renderTreeNode(folderTree, 0)}
+              </div>
+            )}
+          </div>
 
-            <div className="flex items-center justify-center space-x-3 pt-2">
+          {/* Footer Actions */}
+          <div className="p-6 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/10">
+            <span className="text-xs font-bold text-neutral-400 truncate max-w-[150px] sm:max-w-[180px]">
+              To: <span className="text-neutral-700 dark:text-neutral-200 font-black">{selectedPath === "/" ? "My Drive" : selectedPath}</span>
+            </span>
+            <div className="flex space-x-2 shrink-0">
               <Button 
                 variant="ghost" 
-                className="rounded-xl h-12 px-6 font-bold text-neutral-500 text-xs"
-                onClick={() => setShowConfirm(false)}
-                disabled={isMoving}
+                className="rounded-xl h-11 px-4 font-bold text-neutral-500 text-xs"
+                onClick={onClose}
               >
-                Back
+                Cancel
               </Button>
               <Button 
                 variant="default" 
-                className="rounded-xl h-12 px-8 font-bold shadow-lg shadow-primary/15 text-xs"
-                onClick={handleMove}
-                disabled={isMoving}
+                disabled={isInvalidDestination(selectedPath)}
+                className="rounded-xl h-11 px-6 font-bold shadow-lg shadow-primary/20 text-xs"
+                onClick={() => setShowConfirm(true)}
               >
-                {isMoving ? (
-                  <span className="flex items-center space-x-2">
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Moving...</span>
-                  </span>
-                ) : (
-                  "Confirm Move"
-                )}
+                Move Here
               </Button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      ) : (
+        /* Confirmation Screen */
+        <div className="p-8 space-y-6 text-center animate-in fade-in duration-200">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+            <HelpCircle size={32} />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className="text-lg font-black tracking-tight">Confirm Move</h3>
+            <p className="text-sm text-neutral-500 font-medium leading-relaxed px-4">
+              {getConfirmationMessage()}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center space-x-3 pt-2">
+            <Button 
+              variant="ghost" 
+              className="rounded-xl h-12 px-6 font-bold text-neutral-500 text-xs"
+              onClick={() => setShowConfirm(false)}
+              disabled={isMoving}
+            >
+              Back
+            </Button>
+            <Button 
+              variant="default" 
+              className="rounded-xl h-12 px-8 font-bold shadow-lg shadow-primary/15 text-xs"
+              onClick={handleMove}
+              disabled={isMoving}
+            >
+              {isMoving ? (
+                <span className="flex items-center space-x-2">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Moving...</span>
+                </span>
+              ) : (
+                "Confirm Move"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Dialog>
   );
 }

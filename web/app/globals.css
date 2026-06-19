@@ -121,7 +121,12 @@
   scrollbar-width: none;
 }
 
-/* Smooth transitions for theme toggle */
-* {
-  transition: background-color 150ms ease-in-out, border-color 150ms ease-in-out, padding 150ms ease-in-out;
+/* Specific transitions for theme toggle and sidebar */
+.theme-transition {
+  transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
+}
+
+body {
+  @apply bg-background text-foreground antialiased selection:bg-primary/30 text-[13px];
+  overflow-x: hidden;
 }
