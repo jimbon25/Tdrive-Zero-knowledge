@@ -36,7 +36,7 @@ export function IntegrityBanner() {
       
       <span className="truncate">{integrity.message}</span>
       
-      {integrity.state === "LOCKED" || integrity.state === "SAFE_MODE" && !integrity.message.includes("CI") ? (
+      {(integrity.state === "LOCKED" || integrity.state === "SAFE_MODE") && !integrity.message.includes("CI") ? (
         <div className="hidden sm:flex items-center space-x-2 border-l border-white/20 pl-3 ml-1">
            <code className="bg-black/20 px-2 py-0.5 rounded text-[9px]">tdrive verify-instance</code>
         </div>

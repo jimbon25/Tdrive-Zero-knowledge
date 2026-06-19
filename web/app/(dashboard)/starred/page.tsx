@@ -3,6 +3,9 @@
 import React, { useMemo } from "react";
 import { useStarredFiles } from "@/hooks/api/useFiles";
 import { FileItem } from "@/components/explorer/FileItem";
+import { PreviewModal } from "@/components/explorer/PreviewModal";
+import { MoveDialog } from "@/components/explorer/MoveDialog";
+import { FileItem as FileType } from "@/types";
 import { useUIStore } from "@/store/useUIStore";
 import { useSelectionStore } from "@/store/useSelectionStore";
 import { BulkActionToolbar } from "@/components/explorer/BulkActionToolbar";
@@ -29,6 +32,32 @@ export default function StarredPage() {
   const { viewMode, setViewMode, searchQuery } = useUIStore();
   const { selectedIds, clearSelection, isSelectionMode, setSelectedIds } = useSelectionStore();
   const { confirm, addNotification } = useNotificationStore();
+  const [previewFile, setPreviewFile] = React.useState<FileType | null>(null);
+  const [moveFile, setMoveFile] = React.useState<FileType | null>(null);
+
+  const handleDownload = async (file: FileType) => {
+    try {
+      const response = await api.post(`/files/${file.file_id}/ticket`);
+      const { ticket } = response.data.data;
+      window.location.href = `${api.defaults.baseURL}/download/${ticket}`;
+    } catch (error) {
+      toast.error("Download unavailable");
+    }
+  };
+
+  const handleDelete = async (file: FileType) => {
+    const isConfirmed = await confirm({
+      title: "Move to Trash?",
+      message: `Do you want to move "${file.filename}" to the Trash Bin?`,
+      confirmLabel: "Move to Trash"
+    });
+    if (isConfirmed) {
+      await api.delete(`/files/${file.file_id}`);
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      setPreviewFile(null);
+    }
+  };
 
   const filteredFiles = useMemo(() => {
     if (!files) return [];
@@ -178,6 +207,8 @@ export default function StarredPage() {
                 file={file} 
                 viewMode={viewMode} 
                 currentPath={file.virtual_path}
+                onPreview={setPreviewFile}
+                onMove={setMoveFile}
               />
             ))}
           </div>
@@ -195,6 +226,25 @@ export default function StarredPage() {
           </div>
         )}
       </main>
+
+      {previewFile && (
+        <PreviewModal 
+          file={previewFile}
+          isOpen={true}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => handleDownload(previewFile)}
+          onDelete={() => handleDelete(previewFile)}
+        />
+      )}
+
+      <MoveDialog 
+        isOpen={!!moveFile}
+        onClose={() => {
+          setMoveFile(null);
+        }}
+        items={moveFile ? [moveFile] : []}
+        currentPath={"/"}
+      />
     </div>
   );
 }

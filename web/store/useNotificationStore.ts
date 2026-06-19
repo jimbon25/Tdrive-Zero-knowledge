@@ -88,6 +88,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   confirm: ({ title, message, confirmLabel, cancelLabel }) => {
     return new Promise((resolve) => {
+      const currentDialog = get().dialog;
+      if (currentDialog) currentDialog.resolve(false);
+      
       set({
         dialog: {
           isOpen: true,
@@ -104,6 +107,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   prompt: ({ title, message, placeholder, defaultValue, confirmLabel }) => {
     return new Promise((resolve) => {
+      const currentDialog = get().dialog;
+      if (currentDialog) currentDialog.resolve(null);
+
       set({
         dialog: {
           isOpen: true,
@@ -121,6 +127,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   alert: ({ title, message }) => {
     return new Promise((resolve) => {
+      const currentDialog = get().dialog;
+      if (currentDialog) currentDialog.resolve(undefined);
+
       set({
         dialog: {
           isOpen: true,

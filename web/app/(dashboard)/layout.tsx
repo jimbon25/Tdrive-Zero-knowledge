@@ -21,6 +21,20 @@ export default function DashboardLayout({
     setMobileMenuOpen 
   } = useUIStore();
 
+  React.useEffect(() => {
+    if (isMobileMenuOpen) {
+      import('@/lib/scrollLock').then(({ lockScroll }) => lockScroll());
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setMobileMenuOpen(false);
+      };
+      window.addEventListener("keydown", handleEsc);
+      return () => {
+        import('@/lib/scrollLock').then(({ unlockScroll }) => unlockScroll());
+        window.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [isMobileMenuOpen, setMobileMenuOpen]);
+
   return (
     <div className="flex flex-col h-screen w-full bg-background overflow-hidden relative font-sans text-neutral-900 dark:text-neutral-100">
       {/* 1. Global Layer */}

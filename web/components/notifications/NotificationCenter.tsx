@@ -25,6 +25,20 @@ export function NotificationCenter({ isOpen, onClose }: { isOpen: boolean; onClo
     return () => setMounted(false);
   }, []);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      import('@/lib/scrollLock').then(({ lockScroll }) => lockScroll());
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", handleEsc);
+      return () => {
+        import('@/lib/scrollLock').then(({ unlockScroll }) => unlockScroll());
+        window.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [isOpen, onClose]);
+
   const getIcon = (type: string) => {
     switch (type) {
       case "success": return <CheckCircle2 className="text-emerald-500" size={20} />;

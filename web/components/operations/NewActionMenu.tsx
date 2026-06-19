@@ -7,7 +7,9 @@ import { api } from "@/lib/axios";
 import toast from "react-hot-toast";
 import { useUIStore } from "@/store/useUIStore";
 import { cn, Button } from "@/components/ui";
-import { Dialog } from "@/components/ui/Dialog";
+import { DuplicateWarningDialog, DuplicateInfo } from "@/components/shared/DuplicateWarningDialog";
+import { formatSize, calculateSHA256 } from "@/lib/fileUtils";
+
 import { useRouter } from "next/navigation";
 
 interface NewActionMenuProps {
@@ -15,23 +17,6 @@ interface NewActionMenuProps {
   onCreateFolder: () => void;
   onRefresh: () => void;
 }
-
-interface DuplicateInfo {
-  file: File;
-  existingFile: {
-    file_id: string;
-    filename: string;
-    virtual_path: string;
-  };
-  vpath: string;
-}
-
-const calculateSHA256 = async (file: File): Promise<string> => {
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-};
 
 export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -234,7 +219,7 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
     if (!currentDuplicate) return;
 
     if (action === 'anyway') {
-      uploadMutation.mutate({ file: currentDuplicate.file, vpath: currentDuplicate.vpath });
+      uploadMutation.mutate({ file: currentDuplicate.file, vpath: currentDuplicate.vpath || '/' });
     } else if (action === 'open') {
       const path = currentDuplicate.existingFile.virtual_path;
       router.push(`/files?path=${encodeURIComponent(path === '/' ? '' : path)}`);
@@ -244,14 +229,6 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
     setUploadQueue(nextQueue);
     setCurrentDuplicate(null);
     processNextQueueItem(nextQueue);
-  };
-
-  const formatSize = (bytes: number) => {
-    if (!bytes) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
   const isPending = uploadMutation.isPending || isHashing;
@@ -348,72 +325,13 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
         </div>
       )}
 
-      {/* Duplicate Warning Dialog */}
-      <Dialog
-        isOpen={!!currentDuplicate}
-        onClose={() => handleDuplicateResolve('cancel')}
-      >
-        <div className="p-8 space-y-6 text-left">
-          <div className="flex items-center space-x-3 text-amber-500">
-            <div className="p-2 bg-amber-500/10 rounded-xl">
-              <AlertTriangle size={24} />
-            </div>
-            <h3 className="text-lg font-black tracking-tight text-neutral-900 dark:text-white">Duplicate File Warning</h3>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
-              A file with the exact same content (SHA256) already exists in your storage.
-            </p>
-            
-            <div className="p-4 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 space-y-2 text-xs">
-              <div>
-                <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">File to upload</span>
-                <span className="font-bold text-neutral-850 dark:text-neutral-200 break-all">{currentDuplicate?.file.name}</span>
-                <span className="text-neutral-400 ml-1">({currentDuplicate ? formatSize(currentDuplicate.file.size) : ""})</span>
-              </div>
-              
-              <div className="h-px bg-neutral-200 dark:bg-neutral-800 my-2" />
-
-              <div>
-                <span className="font-bold text-neutral-400 uppercase tracking-wider block text-[9px]">Existing file location</span>
-                <span className="font-bold text-neutral-800 dark:text-neutral-200 break-all">{currentDuplicate?.existingFile.filename}</span>
-                <div className="text-neutral-400 mt-0.5 flex items-center space-x-1">
-                  <span>Folder:</span>
-                  <span className="underline italic">{currentDuplicate?.existingFile.virtual_path}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="default"
-              className="w-full rounded-xl font-bold h-11 flex items-center justify-center space-x-2 shadow-lg shadow-primary/10"
-              onClick={() => handleDuplicateResolve('open')}
-            >
-              <span>Open Existing File</span>
-              <ExternalLink size={16} />
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full rounded-xl font-bold h-11 border-neutral-200 dark:border-neutral-800"
-              onClick={() => handleDuplicateResolve('anyway')}
-            >
-              Upload Anyway
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full rounded-xl font-bold h-11 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              onClick={() => handleDuplicateResolve('cancel')}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <DuplicateWarningDialog
+        duplicateInfo={currentDuplicate}
+        onOpenExisting={() => handleDuplicateResolve('open')}
+        onUploadAnyway={() => handleDuplicateResolve('anyway')}
+        onCancel={() => handleDuplicateResolve('cancel')}
+        formatSize={formatSize}
+      />
     </div>
   );
 }

@@ -10,7 +10,6 @@ interface DialogProps {
   children: React.ReactNode;
   className?: string;
   backdropClassName?: string;
-  showCloseButton?: boolean;
 }
 
 export function Dialog({
@@ -26,19 +25,26 @@ export function Dialog({
     setMounted(true);
   }, []);
 
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
+      import('@/lib/scrollLock').then(({ lockScroll, unlockScroll }) => {
+        lockScroll();
+      });
       const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
+        if (e.key === "Escape") onCloseRef.current();
       };
       window.addEventListener("keydown", handleEsc);
       return () => {
-        document.body.style.overflow = "unset";
+        import('@/lib/scrollLock').then(({ unlockScroll }) => {
+          unlockScroll();
+        });
         window.removeEventListener("keydown", handleEsc);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!mounted || !isOpen) return null;
 

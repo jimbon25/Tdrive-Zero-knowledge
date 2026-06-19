@@ -32,21 +32,19 @@ import { useStarFile } from "@/hooks/api/useFiles";
 import { cn, Button } from "@/components/ui";
 import { formatLocalTime } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { PreviewModal } from "./PreviewModal";
-import { MoveDialog } from "./MoveDialog";
 
 interface FileItemProps {
   file: FileType;
   viewMode: "grid" | "list";
   currentPath: string;
   isTrashView?: boolean;
+  onPreview?: (file: FileType) => void;
+  onMove?: (file: FileType) => void;
 }
 
-export function FileItem({ file, viewMode, currentPath, isTrashView = false }: FileItemProps) {
+export function FileItem({ file, viewMode, currentPath, isTrashView = false, onPreview, onMove }: FileItemProps) {
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [showMobileActions, setShowMobileMenu] = React.useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
-  const [isMoveOpen, setIsMoveOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
   const { confirm, prompt, addNotification } = useNotificationStore();
@@ -217,7 +215,7 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
     e.stopPropagation();
     if (isSelectionMode) return;
     if (!file.is_folder && !isTrashView) {
-      setIsPreviewOpen(true);
+      onPreview?.(file);
     }
   };
 
@@ -323,32 +321,13 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
           onRename={handleRename}
           onRestore={() => restoreMutation.mutate()}
           onStar={handleToggleStar}
-          onMove={() => setIsMoveOpen(true)}
+          onMove={onMove ? () => onMove(file) : undefined}
           isDownloading={isDownloading}
           isDeleting={isTrashView ? permanentDeleteMutation.isPending : trashMutation.isPending}
           isRenaming={renameMutation.isPending}
           isStarring={starMutation.isPending}
           formatSize={formatSize}
         />
-
-        {!isTrashView && !file.is_folder && (
-          <PreviewModal 
-            file={file}
-            isOpen={isPreviewOpen}
-            onClose={() => setIsPreviewOpen(false)}
-            onDownload={handleDownload}
-            onDelete={handleDelete}
-          />
-        )}
-
-        {!isTrashView && (
-          <MoveDialog
-            isOpen={isMoveOpen}
-            onClose={() => setIsMoveOpen(false)}
-            items={[file]}
-            currentPath={currentPath}
-          />
-        )}
       </div>
     );
   }
@@ -478,32 +457,13 @@ export function FileItem({ file, viewMode, currentPath, isTrashView = false }: F
         onRename={handleRename}
         onRestore={() => restoreMutation.mutate()}
         onStar={handleToggleStar}
-        onMove={() => setIsMoveOpen(true)}
+        onMove={onMove ? () => onMove(file) : undefined}
         isDownloading={isDownloading}
         isDeleting={isTrashView ? permanentDeleteMutation.isPending : trashMutation.isPending}
         isRenaming={renameMutation.isPending}
         isStarring={starMutation.isPending}
         formatSize={formatSize}
       />
-
-      {!isTrashView && !file.is_folder && (
-        <PreviewModal 
-          file={file}
-          isOpen={isPreviewOpen}
-          onClose={() => setIsPreviewOpen(false)}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {!isTrashView && (
-        <MoveDialog
-          isOpen={isMoveOpen}
-          onClose={() => setIsMoveOpen(false)}
-          items={[file]}
-          currentPath={currentPath}
-        />
-      )}
     </div>
   );
 }
@@ -530,6 +490,16 @@ function ActionMenu({
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onClose();
+      };
+      window.addEventListener("keydown", handleEsc);
+      return () => window.removeEventListener("keydown", handleEsc);
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
 

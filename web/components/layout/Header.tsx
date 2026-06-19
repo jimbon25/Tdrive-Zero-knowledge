@@ -24,6 +24,21 @@ export function Header() {
   const { unreadCount } = useNotificationStore();
   const [isNotifOpen, setIsNotifOpen] = React.useState(false);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const profileRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    if (isProfileOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileOpen]);
 
   const { data: status } = useQuery({
     queryKey: ["system-status"],
@@ -105,7 +120,7 @@ export function Header() {
           <SettingsIcon size={18} />
         </Link>
         
-        <div className="relative">
+        <div className="relative" ref={profileRef}>
           <button 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center space-x-2 p-1 pr-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors active:scale-95 group"

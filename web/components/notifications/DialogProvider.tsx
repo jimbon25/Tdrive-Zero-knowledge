@@ -80,7 +80,7 @@ export function DialogProvider() {
             </Button>
           )}
           <Button 
-            variant={dialog?.type === "alert" ? "default" : "primary" as any} 
+            variant={dialog?.type === "alert" ? "default" : "default"} 
             className={cn(
               "rounded-xl h-12 px-8 font-bold shadow-lg shadow-primary/10",
               dialog?.type === "confirm" && dialog.title.toLowerCase().includes("delete") && "bg-destructive text-white hover:bg-destructive/90 shadow-destructive/10"

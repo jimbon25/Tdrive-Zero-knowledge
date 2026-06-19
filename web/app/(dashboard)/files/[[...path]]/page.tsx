@@ -6,6 +6,7 @@ import { FileItem } from "@/components/explorer/FileItem";
 import { Breadcrumbs } from "@/components/explorer/Breadcrumbs";
 import { NewActionMenu } from "@/components/operations/NewActionMenu";
 import { MoveDialog } from "@/components/explorer/MoveDialog";
+import { PreviewModal } from "@/components/explorer/PreviewModal";
 import { useUIStore } from "@/store/useUIStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useSelectionStore } from "@/store/useSelectionStore";
@@ -45,6 +46,32 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
   const { prompt, confirm, addNotification } = useNotificationStore();
   const { selectedIds, clearSelection, isSelectionMode, setSelectedIds } = useSelectionStore();
   const [isMoveOpen, setIsMoveOpen] = React.useState(false);
+  const [previewFile, setPreviewFile] = React.useState<FileType | null>(null);
+  const [moveFile, setMoveFile] = React.useState<FileType | null>(null);
+
+  const handleDownload = async (file: FileType) => {
+    try {
+      const response = await api.post(`/files/${file.file_id}/ticket`);
+      const { ticket } = response.data.data;
+      window.location.href = `${api.defaults.baseURL}/download/${ticket}`;
+    } catch (error) {
+      toast.error("Download unavailable");
+    }
+  };
+
+  const handleDelete = async (file: FileType) => {
+    const isConfirmed = await confirm({
+      title: "Move to Trash?",
+      message: `Do you want to move "${file.filename}" to the Trash Bin?`,
+      confirmLabel: "Move to Trash"
+    });
+    if (isConfirmed) {
+      await api.delete(`/files/${file.file_id}`);
+      queryClient.invalidateQueries({ queryKey: ["files", virtualPath] });
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      setPreviewFile(null);
+    }
+  };
 
   const selectedItems = React.useMemo(() => {
     return files ? files.filter(f => selectedIds.includes(f.file_id)) : [];
@@ -302,19 +329,32 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
                 file={file} 
                 viewMode={viewMode}
                 currentPath={virtualPath}
+                onPreview={setPreviewFile}
+                onMove={setMoveFile}
               />
             ))}
           </div>
         </>
       )}
 
+      {previewFile && (
+        <PreviewModal 
+          file={previewFile}
+          isOpen={true}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => handleDownload(previewFile)}
+          onDelete={() => handleDelete(previewFile)}
+        />
+      )}
+
       <MoveDialog 
-        isOpen={isMoveOpen}
+        isOpen={isMoveOpen || !!moveFile}
         onClose={() => {
           setIsMoveOpen(false);
+          setMoveFile(null);
           clearSelection();
         }}
-        items={selectedItems}
+        items={moveFile ? [moveFile] : selectedItems}
         currentPath={virtualPath}
       />
     </div>

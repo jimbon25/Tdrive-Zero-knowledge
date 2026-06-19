@@ -36,6 +36,14 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
   const [textContent, setTextContent] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isCopied, setIsCopied] = React.useState(false);
+  const isCopiedRef = React.useRef(false);
+  
+  // Cleanup copied state on unmount
+  React.useEffect(() => {
+    return () => {
+      isCopiedRef.current = true; // Prevent further state updates if unmounted
+    };
+  }, []);
   const [ticket, setTicket] = React.useState<string | null>(null);
   const [mounted, setMounted] = React.useState(false);
   const starMutation = useStarFile();
@@ -53,48 +61,55 @@ export function PreviewModal({ file, isOpen, onClose, onDownload, onDelete }: Pr
 
   React.useEffect(() => {
     if (isOpen) {
-      setIsLoading(true);
-      setError(null);
-      setTextContent(null);
-      setZoom(100);
-      setTicket(null);
+      import('@/lib/scrollLock').then(({ lockScroll }) => lockScroll());
       
-      handleAcquireTicket();
+      const controller = new AbortController();
+      setTicket(null);
+      setError(null);
+      setIsLoading(true);
+      handleAcquireTicket(controller.signal);
 
-      document.body.style.overflow = "hidden";
       const handleEsc = (e: KeyboardEvent) => {
         if (e.key === "Escape") onClose();
       };
       window.addEventListener("keydown", handleEsc);
+
       return () => {
-        document.body.style.overflow = "unset";
+        import('@/lib/scrollLock').then(({ unlockScroll }) => unlockScroll());
         window.removeEventListener("keydown", handleEsc);
+        controller.abort();
       };
     }
-  }, [isOpen, file.file_id, onClose]);
+  }, [isOpen, file.file_id]);
 
-  const handleAcquireTicket = async () => {
+  const handleAcquireTicket = async (signal?: AbortSignal) => {
     try {
-      const response = await api.post(`/files/${file.file_id}/ticket`);
+      const response = await api.post(`/files/${file.file_id}/ticket`, undefined, { signal });
       const { ticket: newTicket } = response.data.data;
       setTicket(newTicket);
 
       if (isText) {
-        const textResponse = await api.get(`/view/${newTicket}`, { responseType: 'text' });
+        const textResponse = await api.get(`/view/${newTicket}`, { responseType: 'text', signal });
         setTextContent(textResponse.data);
-        setIsLoading(false);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || "Failed to initialize preview session");
+      if (err.name === 'CanceledError') return;
+      setError("Failed to generate preview. The file might be too large or unavailable.");
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleCopy = () => {
     if (textContent) {
-      navigator.clipboard.writeText(textContent);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      if (isCopiedRef.current) return;
+    isCopiedRef.current = true;
+    navigator.clipboard.writeText(textContent);
+    setIsCopied(true);
+    setTimeout(() => {
+      isCopiedRef.current = false;
+      setIsCopied(false);
+    }, 2000);
       toast.success("Copied to clipboard");
     }
   };
