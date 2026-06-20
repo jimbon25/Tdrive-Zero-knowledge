@@ -76,9 +76,14 @@ export function Header() {
         >
           <Menu size={18} className="text-neutral-600 dark:text-neutral-400" />
         </button>
-        <div className="hidden md:flex items-center ml-3 space-x-2">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-black shadow-sm text-xs">T</div>
-          <span className="font-black text-lg tracking-tighter text-neutral-800 dark:text-white">TDrive</span>
+        <div className="hidden md:flex items-center ml-3 space-x-2.5">
+          <div className="relative w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary via-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/30 border border-primary/20 overflow-hidden group-hover:scale-105 transition-transform">
+            <div className="absolute top-0 right-0 w-4 h-4 bg-white/20 blur-[4px] rounded-full translate-x-1 -translate-y-1" />
+            <span className="relative text-white font-black text-sm tracking-tighter drop-shadow-md">T</span>
+          </div>
+          <span className="font-black text-xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-neutral-800 to-neutral-500 dark:from-white dark:to-neutral-400">
+            TDrive
+          </span>
         </div>
       </div>
 

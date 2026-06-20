@@ -28,9 +28,7 @@ import {
   ChevronRight,
   LogOut,
   Settings,
-  ShieldCheck,
-  LayoutGrid,
-  List
+  ShieldCheck
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -42,7 +40,6 @@ export default function ServerPage() {
   const [selectedService, setSelectedService] = React.useState<string | null>(null);
   const [showLogs, setShowLogs] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
-  const [viewMode, setViewMode] = React.useState<"grid" | "list">("list");
   const logEndRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch Services
@@ -201,206 +198,120 @@ export default function ServerPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-20 px-1 md:px-0">
+    <div className="flex flex-col h-full overflow-y-auto bg-[#fafafa] dark:bg-neutral-950 scrollbar-none pb-20 md:pb-8">
       
-      {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card border border-neutral-200 dark:border-neutral-800 p-6 rounded-[2rem] shadow-sm">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-              <Server size={24} />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-xl md:text-2xl font-black tracking-tight">System Core</h1>
-                <div className="px-2 py-0.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center">
-                  <ShieldCheck size={10} className="mr-1" />
-                  Authenticated
-                </div>
-              </div>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-[0.2em] mt-1">Real-time Service Management</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-             <div className="relative flex-1 md:flex-none">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                <input 
-                  type="text"
-                  placeholder="Search units..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 h-11 bg-neutral-100 dark:bg-neutral-900 border-none rounded-2xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none w-full md:w-64 transition-all"
-                />
+      {/* 1. Slim Header (Matches Analytics) */}
+      <header className="px-6 pt-8 pb-6 md:px-10 md:pt-10 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+           <div className="flex items-center space-x-2 mb-1">
+              <div className="w-8 h-1 bg-primary rounded-full" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">System Core</span>
+           </div>
+           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-neutral-900 dark:text-neutral-50 flex items-center space-x-3">
+             <span>Server <span className="text-neutral-400 dark:text-neutral-600">Control</span></span>
+             <div className="px-2 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center mb-1">
+               <ShieldCheck size={10} className="mr-1" />
+               Auth
              </div>
-             <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-11 w-11 rounded-2xl border-neutral-200 dark:border-neutral-800"
-                onClick={() => setServerUnlocked(false)}
-             >
-                <LogOut size={18} />
-             </Button>
-             <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-11 w-11 rounded-2xl border-neutral-200 dark:border-neutral-800"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["server-services"] })}
-             >
-                <RefreshCw size={18} className={cn(isRefetching && "animate-spin")} />
-             </Button>
-          </div>
+           </h1>
         </div>
+        
+        <div className="flex items-center space-x-2">
+           <div className="relative flex-1 md:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+              <input 
+                type="text"
+                placeholder="Search units..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-4 h-10 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none w-full md:w-56 transition-all shadow-sm"
+              />
+           </div>
+           <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 rounded-xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm hover:text-red-500 hover:border-red-500/30"
+              onClick={() => setServerUnlocked(false)}
+              title="Lock Server"
+           >
+              <LogOut size={16} />
+           </Button>
+           <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 rounded-xl bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 shadow-sm text-primary"
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["server-services"] })}
+           >
+              <RefreshCw size={16} className={cn(isRefetching && "animate-spin")} />
+           </Button>
+        </div>
+      </header>
 
-        {/* Stats Overview */}
+      <div className="px-6 md:px-10 space-y-6 md:space-y-8">
+
+        {/* 2. Compact Stats Overview */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-           <StatCard icon={Activity} label="Total Units" value={stats.total} color="blue" />
-           <StatCard icon={CheckCircle2} label="Active" value={stats.active} color="green" />
-           <StatCard icon={AlertCircle} label="Failures" value={stats.failed} color="red" />
-           <StatCard icon={FileQuestion} label="Unknown" value={stats.notFound} color="gray" />
+           <CompactStatItem icon={Activity} label="Total Units" value={stats.total} theme="blue" />
+           <CompactStatItem icon={CheckCircle2} label="Active" value={stats.active} theme="emerald" />
+           <CompactStatItem icon={AlertCircle} label="Failures" value={stats.failed} theme="rose" />
+           <CompactStatItem icon={FileQuestion} label="Missing" value={stats.notFound} theme="gray" />
         </div>
+
+      {/* 3. Control Bar (Compact) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2">
+         <div className="flex items-center space-x-1 p-1 bg-white dark:bg-neutral-900 rounded-xl w-full sm:w-auto border border-neutral-200 dark:border-neutral-800 overflow-x-auto no-scrollbar shadow-sm">
+            {[
+               { id: "all", label: "All" },
+               { id: "active", label: "Live" },
+               { id: "failed", label: "Failed" },
+               { id: "not-found", label: "Missing" }
+            ].map((f) => (
+               <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id as any)}
+                  className={cn(
+                     "flex-1 sm:flex-none flex items-center justify-center px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                     statusFilter === f.id 
+                        ? "bg-neutral-100 dark:bg-neutral-800 text-primary shadow-sm border border-neutral-200/50 dark:border-neutral-700" 
+                        : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 border border-transparent"
+                  )}
+               >
+                  {f.label}
+               </button>
+            ))}
+         </div>
       </div>
 
-      {/* 2. Control Bar */}
-      <div className="sticky top-[64px] z-30 bg-background/80 backdrop-blur-md py-2 -mx-2 px-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-           <div className="flex items-center space-x-1 p-1 bg-neutral-100 dark:bg-neutral-800/50 rounded-2xl w-full sm:w-auto border border-neutral-200 dark:border-neutral-800 overflow-x-auto no-scrollbar">
-              {[
-                 { id: "all", label: "All" },
-                 { id: "active", label: "Live" },
-                 { id: "failed", label: "Failed" },
-                 { id: "not-found", label: "Missing" }
-              ].map((f) => (
-                 <button
-                    key={f.id}
-                    onClick={() => setStatusFilter(f.id as any)}
-                    className={cn(
-                       "flex-1 sm:flex-none flex items-center justify-center space-x-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                       statusFilter === f.id 
-                          ? "bg-card text-primary shadow-md" 
-                          : "text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
-                    )}
-                 >
-                    {f.label}
-                 </button>
-              ))}
-           </div>
-
-           <div className="hidden sm:flex items-center space-x-1 bg-neutral-100 dark:bg-neutral-800/50 p-1 rounded-2xl border border-neutral-200 dark:border-neutral-800">
-              <button 
-                onClick={() => setViewMode("list")}
-                className={cn("p-2 rounded-xl transition-all", viewMode === "list" ? "bg-card text-primary shadow-sm" : "text-neutral-500")}
-              >
-                <List size={16} />
-              </button>
-              <button 
-                onClick={() => setViewMode("grid")}
-                className={cn("p-2 rounded-xl transition-all", viewMode === "grid" ? "bg-card text-primary shadow-sm" : "text-neutral-500")}
-              >
-                <LayoutGrid size={16} />
-              </button>
-           </div>
+      {/* 4. Services List */}
+      {isLoading ? (
+        <div className="py-20 text-center space-y-4">
+          <Loader2 className="animate-spin mx-auto text-primary" size={32} />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Syncing with systemd...</p>
         </div>
-      </div>
-
-      {/* 3. Services List/Grid */}
-      <div className={cn(
-        "animate-in fade-in slide-in-from-bottom-2 duration-500",
-        viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-3"
-      )}>
-        {isLoading ? (
-          <div className="col-span-full py-20 text-center space-y-4">
-            <Loader2 className="animate-spin mx-auto text-primary" size={32} />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">Syncing with systemd...</p>
+      ) : filteredServices?.length === 0 ? (
+        <div className="py-20 text-center bg-white dark:bg-neutral-900 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-[2rem]">
+          <FileQuestion className="mx-auto text-neutral-300 mb-4" size={40} strokeWidth={1.5} />
+          <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">No matching services found</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl shadow-sm flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-500 mb-6">
+          <div className="flex-1 overflow-hidden py-2">
+            {filteredServices?.map((service) => (
+              <ServiceCard 
+                key={service.name}
+                service={service}
+                onPin={() => pinMutation.mutate({ name: service.name, pinned: !service.is_pinned })}
+                onAction={(action) => actionMutation.mutate({ name: service.name, action })}
+                actionPending={actionMutation.isPending && actionMutation.variables?.name === service.name}
+                onLogs={() => {
+                  setSelectedService(service.name);
+                  setShowLogs(true);
+                }}
+              />
+            ))}
           </div>
-        ) : filteredServices?.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-card border border-dashed border-neutral-200 dark:border-neutral-800 rounded-[2rem]">
-            <FileQuestion className="mx-auto text-neutral-300 mb-4" size={48} />
-            <p className="text-xs font-bold uppercase tracking-widest text-neutral-400">No matching services found</p>
-          </div>
-        ) : (
-          filteredServices?.map((service) => (
-            <div 
-              key={service.name} 
-              className={cn(
-                "group bg-card border transition-all duration-300 relative overflow-hidden",
-                viewMode === "grid" ? "rounded-[2rem] p-6 flex flex-col justify-between h-full" : "rounded-3xl p-4 flex items-center justify-between",
-                service.is_pinned ? "border-primary/30 bg-primary/[0.02] shadow-sm" : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-md"
-              )}
-            >
-              <div className={cn("flex", viewMode === "grid" ? "flex-col" : "items-center flex-1 min-w-0 space-x-4")}>
-                {/* Icon & Pin */}
-                <div className={cn("flex items-center", viewMode === "grid" ? "justify-between mb-4" : "shrink-0")}>
-                  <div className={cn(
-                    "p-2.5 rounded-2xl flex items-center justify-center",
-                    service.active_state === "active" ? "bg-green-500/10 text-green-500" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
-                  )}>
-                    <Terminal size={18} />
-                  </div>
-                  <button 
-                    onClick={() => pinMutation.mutate({ name: service.name, pinned: !service.is_pinned })}
-                    className={cn(
-                      "transition-all active:scale-90",
-                      service.is_pinned ? "text-primary" : "text-neutral-300 hover:text-neutral-500",
-                      viewMode === "list" && "hidden"
-                    )}
-                  >
-                    <Pin size={16} className={cn(service.is_pinned && "fill-current")} />
-                  </button>
-                </div>
-
-                {/* Name & Desc */}
-                <div className="min-w-0 flex-1">
-                   <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-black tracking-tight truncate text-neutral-900 dark:text-white group-hover:text-primary transition-colors">
-                        {service.name}
-                      </h3>
-                      {service.is_pinned && viewMode === "list" && <Pin size={10} className="text-primary fill-current" />}
-                   </div>
-                   <p className="text-[10px] text-neutral-500 font-bold truncate mt-0.5">
-                     {service.description || "No description provided"}
-                   </p>
-                </div>
-
-                {/* Status Badge */}
-                <div className={cn(viewMode === "grid" ? "mt-4" : "mx-4 shrink-0 hidden md:block")}>
-                   <StatusBadge state={service.active_state} subState={service.sub_state} loadState={service.load_state} />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className={cn(
-                "flex items-center space-x-1.5",
-                viewMode === "grid" ? "mt-6 border-t border-neutral-100 dark:border-neutral-800 pt-4" : "shrink-0"
-              )}>
-                 {service.load_state !== "not-found" && (
-                   <>
-                      <ActionButton 
-                        icon={service.active_state === "active" ? Square : Play} 
-                        onClick={() => actionMutation.mutate({ name: service.name, action: service.active_state === "active" ? "stop" : "start" })}
-                        loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
-                        variant={service.active_state === "active" ? "destructive" : "default"}
-                      />
-                      <ActionButton 
-                        icon={RotateCcw} 
-                        onClick={() => actionMutation.mutate({ name: service.name, action: "restart" })}
-                        loading={actionMutation.isPending && actionMutation.variables?.name === service.name}
-                        variant="outline"
-                      />
-                   </>
-                 )}
-                 <ActionButton 
-                    icon={ChevronRight} 
-                    onClick={() => {
-                      setSelectedService(service.name);
-                      setShowLogs(true);
-                    }}
-                    variant="outline"
-                 />
-              </div>
-            </div>
-          ))
-        )}
+        </div>
+      )}
       </div>
 
       {/* Log Viewer Modal */}
@@ -474,25 +385,114 @@ export default function ServerPage() {
 
 // --- SUB-COMPONENTS ---
 
-function StatCard({ icon: Icon, label, value, color }: any) {
-  const colors = {
-    blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    green: "bg-green-500/10 text-green-500 border-green-500/20",
-    red: "bg-red-500/10 text-red-500 border-red-500/20",
-    gray: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
-  };
+interface ServiceCardProps {
+  service: ServiceStatus;
+  onPin: () => void;
+  onAction: (action: string) => void;
+  actionPending: boolean;
+  onLogs: () => void;
+}
 
+function ServiceCard({
+  service,
+  onPin,
+  onAction,
+  actionPending,
+  onLogs
+}: ServiceCardProps) {
   return (
-    <div className="bg-card border border-neutral-200 dark:border-neutral-800 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 flex items-center space-x-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className={cn("p-3 md:p-4 rounded-2xl border", colors[color as keyof typeof colors])}>
-        <Icon size={20} className="md:w-6 md:h-6" />
+    <div className="group relative transition-all duration-200 flex items-center justify-between p-3.5 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-2xl mx-2">
+      <div className="flex items-center flex-1 min-w-0 space-x-4">
+        {/* Icon */}
+        <div className="shrink-0">
+          <div className={cn(
+            "w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 border",
+            service.active_state === "active" 
+              ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-500 border-emerald-100 dark:border-emerald-900/30" 
+              : "bg-neutral-50 dark:bg-neutral-800 text-neutral-400 border-neutral-100 dark:border-neutral-700"
+          )}>
+            <Terminal size={18} strokeWidth={2.5} />
+          </div>
+        </div>
+
+        {/* Name & Desc */}
+        <div className="min-w-0 flex-1">
+           <div className="flex items-center space-x-2">
+              <h3 className="font-black tracking-tight truncate text-neutral-800 dark:text-neutral-200 group-hover:text-primary transition-colors text-[13px]">
+                {service.name}
+              </h3>
+              {service.is_pinned && <Pin size={10} className="text-primary fill-current" />}
+           </div>
+           <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight truncate mt-0.5">
+             {service.description || "No description provided"}
+           </p>
+        </div>
+
+        {/* Status Badge */}
+        <div className="mx-4 shrink-0 hidden md:flex w-24 justify-end">
+           <StatusBadge state={service.active_state} subState={service.sub_state} loadState={service.load_state} />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-[8px] md:text-[10px] font-black uppercase text-neutral-400 tracking-widest">{label}</p>
-        <p className="text-xl md:text-2xl font-black tracking-tight">{value}</p>
+
+      {/* Actions */}
+      <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1">
+         <div className="flex items-center space-x-1">
+           <ActionButton 
+             icon={Pin} 
+             onClick={onPin}
+             className={cn(service.is_pinned ? "text-primary fill-current" : "text-neutral-400 hover:text-primary")}
+             theme={service.is_pinned ? "primary" : "neutral"}
+           />
+           <ActionButton 
+              icon={Terminal} 
+              onClick={onLogs}
+              theme="primary"
+           />
+           {service.load_state !== "not-found" && (
+             <>
+                <ActionButton 
+                  icon={RotateCcw} 
+                  onClick={() => onAction("restart")}
+                  loading={actionPending}
+                  theme="neutral"
+                />
+                <ActionButton 
+                  icon={service.active_state === "active" ? Square : Play} 
+                  onClick={() => onAction(service.active_state === "active" ? "stop" : "start")}
+                  loading={actionPending}
+                  theme={service.active_state === "active" ? "rose" : "emerald"}
+                />
+             </>
+           )}
+         </div>
       </div>
     </div>
   );
+}
+
+
+function CompactStatItem({ label, value, icon: Icon, theme }: any) {
+   const colors: any = {
+      blue: "text-blue-500 bg-blue-50 dark:bg-blue-900/10",
+      emerald: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10",
+      rose: "text-rose-500 bg-rose-50 dark:bg-rose-900/10",
+      amber: "text-amber-500 bg-amber-50 dark:bg-amber-900/10",
+      gray: "text-neutral-500 bg-neutral-50 dark:bg-neutral-900/10"
+   };
+
+   return (
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl p-4 flex items-center space-x-4 shadow-sm hover:shadow-md transition-all">
+         <div className={cn("p-2 rounded-xl shrink-0", colors[theme])}>
+            <Icon size={18} />
+         </div>
+         <div className="min-w-0">
+            <p className="text-[9px] font-black text-neutral-400 uppercase tracking-[0.1em] truncate mb-0.5">{label}</p>
+            <h3 className="text-base md:text-lg font-black text-neutral-900 dark:text-neutral-100 tracking-tight truncate leading-none">
+               {value}
+            </h3>
+         </div>
+      </div>
+   );
 }
 
 function StatusBadge({ state, subState, loadState }: { state: string, subState: string, loadState: string }) {
@@ -502,8 +502,8 @@ function StatusBadge({ state, subState, loadState }: { state: string, subState: 
 
   if (isNotFound) {
     return (
-      <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-neutral-500/20 bg-neutral-500/10 text-neutral-500 text-[10px] font-black uppercase tracking-widest">
-        <div className="w-2 h-2 rounded-full bg-neutral-500" />
+      <div className="flex items-center space-x-1.5 px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-[9px] font-black uppercase tracking-widest border border-neutral-200 dark:border-neutral-700">
+        <div className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
         <span>Missing</span>
       </div>
     );
@@ -511,32 +511,37 @@ function StatusBadge({ state, subState, loadState }: { state: string, subState: 
 
   return (
     <div className={cn(
-      "flex items-center space-x-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest",
+      "flex items-center space-x-1.5 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
       isActive 
-        ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400" 
+        ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800" 
         : isFailed 
-          ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
-          : "bg-neutral-500/10 border-neutral-500/20 text-neutral-600 dark:text-neutral-400"
+          ? "bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-200/50 dark:border-rose-800"
+          : "bg-neutral-50 dark:bg-neutral-900/10 text-neutral-600 dark:text-neutral-400 border-neutral-200/50 dark:border-neutral-800"
     )}>
       <div className={cn(
-        "w-2 h-2 rounded-full",
-        isActive ? "bg-green-500" : isFailed ? "bg-red-500" : "bg-neutral-500"
+        "w-1.5 h-1.5 rounded-full animate-pulse",
+        isActive ? "bg-emerald-500" : isFailed ? "bg-rose-500" : "bg-neutral-500"
       )} />
       <span>{isActive ? "Active" : isFailed ? "Failed" : state}</span>
     </div>
   );
 }
 
-function ActionButton({ icon: Icon, onClick, loading, variant = "default" }: any) {
-  return (
-    <Button 
-      variant={variant} 
-      size="icon" 
-      className="h-10 w-10 md:h-11 md:w-11 rounded-2xl shadow-sm transition-all active:scale-90"
-      onClick={onClick}
-      disabled={loading}
-    >
-      {loading ? <Loader2 className="animate-spin" size={16} /> : <Icon size={18} />}
-    </Button>
-  );
+function ActionButton({ icon: Icon, onClick, loading, theme = "neutral", className }: any) {
+   const themes: any = {
+      primary: "hover:bg-primary/10 text-neutral-400 hover:text-primary",
+      rose: "hover:bg-rose-500/10 text-neutral-400 hover:text-rose-500",
+      emerald: "hover:bg-emerald-500/10 text-neutral-400 hover:text-emerald-500",
+      neutral: "hover:bg-neutral-500/10 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+   };
+
+   return (
+      <button 
+        className={cn("p-2 rounded-[10px] transition-colors", themes[theme], className)}
+        onClick={onClick}
+        disabled={loading}
+      >
+         {loading ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />}
+      </button>
+   );
 }
