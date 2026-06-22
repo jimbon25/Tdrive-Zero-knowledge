@@ -1,18 +1,22 @@
 # TDrive (Telegram Drive)
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Telegram_Storage-v1.4.0-0088cc?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Storage" height="38" />
+  <img src="https://img.shields.io/badge/Cloud_Engine-OmniCloud-6366F1?style=for-the-badge&logo=icloud&logoColor=white" alt="OmniCloud Engine" height="38" />
+  <img src="https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 14" height="38" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" height="38" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" height="38" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" height="38" />
+  <img src="https://img.shields.io/badge/License-MIT-44CC11?style=for-the-badge" alt="License" height="38" />
+</p>
+
 TDrive is a personal cloud storage system that utilizes Telegram Private Channels as a storage backend. It provides a self-hosted alternative to traditional cloud storage providers by leveraging Telegram's MTProto protocol for data transmission and AES-256-GCM for local data encryption.
 
 Additionally, TDrive incorporates a multi-cloud aggregation engine powered by the backend of the **OmniCloud** project. This allows users to access and manage files across external cloud providers (Google Drive, OneDrive, Dropbox, MEGA, pCloud, Yandex Disk, and S3-compatible storage) from the same unified interface.
 
 ![TDrive Dashboard](screenshot/For-readme-md.png)
 
-## Demo
 
-[![TDrive Demo](https://cdn.loom.com/sessions/thumbnails/97803144921d433e9f749b6cf55ddd51-2b70bbcf402ef329-full-play.gif)](https://www.loom.com/share/97803144921d433e9f749b6cf55ddd51)
-
-Watch the complete TDrive demonstration:
-
-https://www.loom.com/share/97803144921d433e9f749b6cf55ddd51
 
 ## Integration Architecture
 

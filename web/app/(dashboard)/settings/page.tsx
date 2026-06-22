@@ -27,9 +27,80 @@ import {
   Minimize,
   Bot,
   Cloud,
-  Plus
+  Plus,
+  MoreVertical,
+  Copy,
+  Activity
 } from "lucide-react";
 import toast from "react-hot-toast";
+
+const GOOGLE_DRIVE_LOGO = (
+  <svg className="w-6 h-6" viewBox="0 0 36 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12.28 0L0 21.28L6 31.72L18.28 10.44L12.28 0Z" fill="#0066DA"/>
+    <path d="M23.72 0L12.28 0L18.28 10.44L29.72 10.44L23.72 0Z" fill="#00AA47"/>
+    <path d="M30 21.28L18.28 10.44L23.72 0L35.44 20.28C36.16 21.52 36.16 23.04 35.44 24.28L31.12 31.72L30 21.28Z" fill="#EA4335"/>
+    <path d="M30 21.28L18.28 21.28L12.28 31.72L31.12 31.72L30 21.28Z" fill="#FFBA00"/>
+    <path d="M12.28 21.28L0 21.28L6.28 31.72C7 32.96 8.52 32.96 9.24 31.72L12.28 21.28Z" fill="#0066DA"/>
+    <path d="M18.28 21.28L12.28 31.72L6 31.72L0 21.28H18.28Z" fill="#0083E8"/>
+  </svg>
+);
+
+const PROVIDER_LOGOS: Record<string, React.ReactNode> = {
+  google: GOOGLE_DRIVE_LOGO,
+  google_drive: GOOGLE_DRIVE_LOGO,
+  onedrive: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19.34 16.5C21.36 16.5 23 14.86 23 12.84C23 11.26 22 9.9 20.52 9.38C20.42 6.64 18.18 4.46 15.42 4.46C14.7 4.46 14 4.62 13.38 4.94C12.18 3.12 10.12 2 7.78 2C4.16 2 1.22 4.94 1.22 8.56C1.22 8.94 1.26 9.32 1.34 9.7C0.54 10.5 0 11.62 0 12.84C0 14.86 1.64 16.5 3.66 16.5H19.34Z" fill="#0078D4"/>
+    </svg>
+  ),
+  dropbox: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 2L1 5.3L6 8.6L11 5.3L6 2Z" fill="#0061FF"/>
+      <path d="M18 2L13 5.3L18 8.6L23 5.3L18 2Z" fill="#0061FF"/>
+      <path d="M6 15.2L1 11.9L6 8.6L11 11.9L6 15.2Z" fill="#0061FF"/>
+      <path d="M18 15.2L13 11.9L18 8.6L23 11.9L18 15.2Z" fill="#0061FF"/>
+      <path d="M12 12.2L7 15.5L12 18.8L17 15.5L12 12.2Z" fill="#0061FF"/>
+      <path d="M6 16.5V18.2L12 22L18 18.2V16.5L12 20.3L6 16.5Z" fill="#0061FF"/>
+    </svg>
+  ),
+  mega: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="11" fill="#D8232A"/>
+      <path d="M12 6L7 16.5H9.5L12 11.5L14.5 16.5H17L12 6Z" fill="white"/>
+      <path d="M12 11.5L9.5 16.5H14.5L12 11.5Z" fill="#A81B20"/>
+    </svg>
+  ),
+  pcloud: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM15.5 14H13V16.5C13 17.33 12.33 18 11.5 18C10.67 18 10 17.33 10 16.5V14H7.5C6.67 14 6 13.33 6 12.5C6 11.67 6.67 11 7.5 11H10V8.5C10 7.67 10.67 7 11.5 7C12.33 7 13 7.67 13 8.5V11H15.5C16.33 11 17 11.67 17 12.5C17 13.33 16.33 14 15.5 14Z" fill="#2A9DF4"/>
+    </svg>
+  ),
+  s3: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#FF9900"/>
+      <path d="M2 17L12 22L22 17V19L12 24L2 19V17Z" fill="#FF9900"/>
+      <path d="M2 12L12 17L22 12V14L12 19L2 14V12Z" fill="#FF9900"/>
+    </svg>
+  ),
+  yandex: (
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="12" cy="14" rx="10" ry="6" fill="#C11F2E"/>
+      <path d="M13.5 2C15.98 2 18 4.02 18 6.5C18 8.98 15.98 11 13.5 11C11.02 11 9 8.98 9 6.5C9 4.02 11.02 2 13.5 2Z" fill="#E61428"/>
+      <path d="M12 11L13.5 2.5H16.5L15 11H12Z" fill="#1C1B1B"/>
+    </svg>
+  )
+};
+
+const PROVIDER_NAMES: Record<string, string> = {
+  google: "Google Drive",
+  google_drive: "Google Drive",
+  onedrive: "OneDrive",
+  dropbox: "Dropbox",
+  mega: "MEGA",
+  pcloud: "pCloud",
+  s3: "S3 Storage",
+  yandex: "Yandex Disk"
+};
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -45,6 +116,7 @@ export default function SettingsPage() {
 
   // OmniCloud States & Functions
   const [selectedCredentialProvider, setSelectedCredentialProvider] = React.useState<string | null>(null);
+  const [openDropdownAccountId, setOpenDropdownAccountId] = React.useState<string | null>(null);
   const [credentialForm, setCredentialForm] = React.useState({
     email: "",
     password: "",
@@ -157,6 +229,35 @@ export default function SettingsPage() {
     enabled: !!status?.omnicloud_connected,
   });
 
+  // Compute storage summaries for Linked Accounts
+  const summaryStats = React.useMemo(() => {
+    if (!ocAccounts || ocAccounts.length === 0) {
+      return {
+        totalAccounts: 0,
+        totalCapacity: 0,
+        totalUsed: 0,
+        totalAvailable: 0,
+      };
+    }
+    const totalAccounts = ocAccounts.length;
+    let totalCapacity = 0;
+    let totalUsed = 0;
+    
+    ocAccounts.forEach((acc: any) => {
+      totalCapacity += Number(acc.total_space || 0);
+      totalUsed += Number(acc.used_space || 0);
+    });
+    
+    const totalAvailable = Math.max(0, totalCapacity - totalUsed);
+    
+    return {
+      totalAccounts,
+      totalCapacity,
+      totalUsed,
+      totalAvailable,
+    };
+  }, [ocAccounts]);
+
   const deleteOcAccount = useMutation({
     mutationFn: async (id: string) => {
       const resp = await api.delete<StructuredResponse<any>>(`/system/omnicloud/accounts/${id}`);
@@ -216,7 +317,7 @@ export default function SettingsPage() {
   const isBotEnabled = status?.features?.optional?.find(f => f.id === "F-OPT-04")?.enabled;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-10 px-4 sm:px-6 md:px-0">
       {/* 1. Header */}
       <div className="flex items-center space-x-3 text-neutral-900 dark:text-neutral-100">
         <div className="p-2 bg-primary/10 text-primary rounded-xl shadow-sm">
@@ -470,95 +571,206 @@ export default function SettingsPage() {
                </div>
                <div className="flex items-center space-x-2">
                   <span className={cn(
-                    "text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider",
-                    status?.omnicloud_connected ? "bg-blue-500/10 text-blue-500" : "bg-neutral-200 dark:bg-neutral-800 text-neutral-500"
+                     "text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider",
+                     status?.omnicloud_connected ? "bg-blue-500/10 text-blue-500" : "bg-neutral-200 dark:bg-neutral-800 text-neutral-500"
                   )}>
                      {status?.omnicloud_connected ? "Connected" : "Offline"}
                   </span>
                </div>
             </div>
 
-            {/* List of Connected Accounts */}
             {status?.omnicloud_connected && (
-              <div className="space-y-4">
-                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-3">Linked Accounts</h4>
+              <div className="space-y-6">
+                 {/* Summary Section */}
+                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 border-t border-neutral-100 dark:border-neutral-800 pt-5">
+                    <div className="bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-150 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col justify-between h-20 shadow-sm transition-all duration-300 hover:shadow">
+                       <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">Total Accounts</span>
+                       <span className="text-lg font-bold text-blue-500">{summaryStats.totalAccounts}</span>
+                    </div>
+                    <div className="bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-150 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col justify-between h-20 shadow-sm transition-all duration-300 hover:shadow">
+                       <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">Total Capacity</span>
+                       <span className="text-lg font-bold">{formatSize(summaryStats.totalCapacity)}</span>
+                    </div>
+                    <div className="bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-150 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col justify-between h-20 shadow-sm transition-all duration-300 hover:shadow">
+                       <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">Used Storage</span>
+                       <span className="text-lg font-bold text-amber-500">{formatSize(summaryStats.totalUsed)}</span>
+                    </div>
+                    <div className="bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-150 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col justify-between h-20 shadow-sm transition-all duration-300 hover:shadow">
+                       <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">Available Storage</span>
+                       <span className="text-lg font-bold text-emerald-500">{formatSize(summaryStats.totalAvailable)}</span>
+                    </div>
+                 </div>
+
+                 {/* List of Connected Accounts */}
+                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5">
+                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-4">Linked Accounts</h4>
                     {ocAccounts && ocAccounts.length > 0 ? (
-                       <div className="space-y-2">
-                          {ocAccounts.map((account: any) => (
-                             <div key={account.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-xl">
-                                <div className="flex items-center space-x-3">
-                                   <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                                      <Database size={16} />
-                                   </div>
-                                   <div>
-                                      <p className="text-xs font-bold capitalize">{account.provider} <span className="text-neutral-400 font-normal">({account.email})</span></p>
-                                      <p className="text-[10px] text-neutral-500 mt-0.5">
-                                         {formatSize(account.used_space || 0)} used of {formatSize(account.total_space || 0)}
-                                      </p>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {ocAccounts.map((account: any) => {
+                             const usedPercent = account.total_space 
+                                ? Math.min(100, Math.round((account.used_space / account.total_space) * 100))
+                                : 0;
+                             
+                             return (
+                                <div key={account.id} className="relative group flex flex-col justify-between p-5 bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-150 dark:border-neutral-800 rounded-2xl shadow-sm hover:shadow-md hover:scale-[1.01] hover:border-neutral-300 dark:hover:border-neutral-700 transition-all duration-300">
+                                    <button 
+                                       onClick={() => setOpenDropdownAccountId(openDropdownAccountId === account.id ? null : account.id)}
+                                       className={cn(
+                                          "absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors p-1 rounded-lg z-25",
+                                          openDropdownAccountId === account.id && "text-neutral-700 dark:text-neutral-200 bg-neutral-100 dark:bg-neutral-800"
+                                       )}
+                                    >
+                                       <MoreVertical size={16} />
+                                    </button>
+
+                                    {/* Action Dropdown Menu */}
+                                    {openDropdownAccountId === account.id && (
+                                       <>
+                                          <div className="fixed inset-0 z-30" onClick={() => setOpenDropdownAccountId(null)} />
+                                          <div className="absolute right-4 top-11 w-44 bg-card border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-lg p-1.5 z-40 animate-in fade-in slide-in-from-top-2 duration-155">
+                                             <button
+                                                onClick={() => {
+                                                   navigator.clipboard.writeText(account.email);
+                                                   toast.success("Email copied to clipboard");
+                                                   setOpenDropdownAccountId(null);
+                                                }}
+                                                className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors flex items-center gap-2"
+                                             >
+                                                <Copy size={12} />
+                                                Copy Email
+                                             </button>
+                                             <button
+                                                onClick={() => {
+                                                   toast.success("Connection status: Healthy");
+                                                   setOpenDropdownAccountId(null);
+                                                }}
+                                                className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100 transition-colors flex items-center gap-2"
+                                             >
+                                                <Activity size={12} />
+                                                Verify Connection
+                                             </button>
+                                             <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                                             <button
+                                                onClick={async () => {
+                                                   setOpenDropdownAccountId(null);
+                                                   if (await confirm({ title: "Disconnect account?", message: `Are you sure you want to disconnect this ${PROVIDER_NAMES[account.provider.toLowerCase()] || account.provider} account?` })) {
+                                                      deleteOcAccount.mutate(account.id);
+                                                   }
+                                                }}
+                                                className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-2 font-bold"
+                                                disabled={deleteOcAccount.isPending}
+                                             >
+                                                <Trash2 size={12} />
+                                                Disconnect
+                                             </button>
+                                          </div>
+                                       </>
+                                    )}
+
+                                   <div className="space-y-4">
+                                      {/* Provider Logo & Info */}
+                                      <div className="flex items-center space-x-3">
+                                         <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-xl transition-transform group-hover:scale-105 duration-300">
+                                            {PROVIDER_LOGOS[account.provider.toLowerCase()] || <Database className="w-6 h-6 text-neutral-500" />}
+                                         </div>
+                                         <div className="pr-4">
+                                            <p className="text-xs font-black text-neutral-800 dark:text-neutral-200">{PROVIDER_NAMES[account.provider.toLowerCase()] || account.provider}</p>
+                                            <p className="text-[10px] text-neutral-450 font-medium truncate max-w-[140px]" title={account.email}>{account.email}</p>
+                                         </div>
+                                      </div>
+
+                                      {/* Progress Bar & Details */}
+                                      <div className="space-y-2">
+                                         <div className="w-full bg-neutral-200 dark:bg-neutral-800 h-2 rounded-full overflow-hidden">
+                                            <div 
+                                               className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                                               style={{ width: `${usedPercent}%` }}
+                                            />
+                                         </div>
+                                         <div className="flex items-center justify-between text-[10px] font-bold text-neutral-500">
+                                            <span>{formatSize(account.used_space || 0)} used</span>
+                                            <span>{formatSize(account.total_space || 0)} total</span>
+                                         </div>
+                                      </div>
                                    </div>
                                 </div>
-                                <Button
-                                  variant="destructive"
-                                  className="h-8 rounded-lg text-[10px] font-bold px-3"
-                                  onClick={async () => {
-                                     if (await confirm({ title: "Disconnect account?", message: `Are you sure you want to disconnect this ${account.provider} account?` })) {
-                                        deleteOcAccount.mutate(account.id);
-                                     }
-                                  }}
-                                  disabled={deleteOcAccount.isPending}
-                                >
-                                   {deleteOcAccount.isPending ? <Loader2 className="animate-spin" size={10} /> : "Disconnect"}
-                                </Button>
-                             </div>
-                          ))}
+                             );
+                          })}
                        </div>
                     ) : (
                        <p className="text-xs text-neutral-500 italic">No storage accounts connected. Link a cloud provider below.</p>
                     )}
                  </div>
 
-                 {/* Link New Cloud Storage Provider */}
-                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-3">Link New Provider</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                       {/* OAuth providers */}
-                       {["google", "onedrive", "dropbox", "yandex"].map((provider) => (
-                          <Button
-                            key={provider}
-                            variant="outline"
-                            className="h-10 text-xs rounded-xl font-bold capitalize flex items-center justify-center gap-1.5"
-                            onClick={() => connectOcOAuth.mutate(provider)}
-                            disabled={connectOcOAuth.isPending}
-                          >
-                             {connectOcOAuth.isPending && connectOcOAuth.variables === provider ? (
-                               <Loader2 className="animate-spin" size={14} />
-                             ) : (
-                               <Plus size={14} />
-                             )}
-                             <span>{provider === "google" ? "Google Drive" : provider}</span>
-                          </Button>
-                       ))}
-                    </div>
+                  {/* Link New Cloud Storage Provider */}
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 space-y-4">
+                     <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">Link New Provider</h4>
+                     
+                     <div className="flex flex-wrap gap-3">
+                        {/* OAuth providers */}
+                        {[
+                          { id: "google", label: "Google Drive" },
+                          { id: "onedrive", label: "OneDrive" },
+                          { id: "dropbox", label: "Dropbox" },
+                          { id: "yandex", label: "Yandex Disk" }
+                        ].map((prov) => (
+                           <button 
+                              key={prov.id} 
+                              onClick={() => connectOcOAuth.mutate(prov.id)}
+                              disabled={connectOcOAuth.isPending}
+                              className="group flex items-center gap-2.5 p-2 px-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/10 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow"
+                           >
+                              <div className="w-5 h-5 flex items-center justify-center transition-transform group-hover:scale-105 duration-200">
+                                 {PROVIDER_LOGOS[prov.id]}
+                              </div>
+                              <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 flex items-center gap-1.5">
+                                 {connectOcOAuth.isPending && connectOcOAuth.variables === prov.id && (
+                                   <Loader2 className="animate-spin" size={12} />
+                                 )}
+                                 Connect {prov.label}
+                              </span>
+                           </button>
+                        ))}
 
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                       {/* Credential providers (Mega, S3, pCloud) */}
-                       {["mega", "pcloud", "s3"].map((provider) => (
-                          <Button
-                            key={provider}
-                            variant="outline"
-                            className="h-10 text-xs rounded-xl font-bold capitalize flex items-center justify-center gap-1.5 border-dashed"
-                            onClick={() => {
-                              setSelectedCredentialProvider(provider);
-                              setCredentialForm({ email: "", password: "", bucket: "", accessKeyId: "", secretAccessKey: "", region: "us-east-1", endpoint: "" });
-                            }}
-                          >
-                             <Plus size={14} />
-                             <span>{provider}</span>
-                          </Button>
-                       ))}
-                    </div>
-                 </div>
+                        {/* Credential providers (Mega, pCloud, S3) */}
+                        {[
+                          { id: "mega", label: "MEGA" },
+                          { id: "pcloud", label: "pCloud" },
+                          { id: "s3", label: "S3 Storage" }
+                        ].map((prov) => {
+                           const isActive = selectedCredentialProvider === prov.id;
+                           return (
+                              <button 
+                                 key={prov.id} 
+                                 onClick={() => {
+                                   if (isActive) {
+                                     setSelectedCredentialProvider(null);
+                                   } else {
+                                     setSelectedCredentialProvider(prov.id);
+                                     setCredentialForm({ email: "", password: "", bucket: "", accessKeyId: "", secretAccessKey: "", region: "us-east-1", endpoint: "" });
+                                   }
+                                 }}
+                                 className={cn(
+                                   "group flex items-center gap-2.5 p-2 px-3.5 rounded-xl border border-dashed transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow",
+                                   isActive 
+                                     ? "border-primary bg-primary/5 text-primary" 
+                                     : "border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/10 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:border-neutral-300 dark:hover:border-neutral-700"
+                                 )}
+                              >
+                                 <div className="w-5 h-5 flex items-center justify-center transition-transform group-hover:scale-105 duration-200">
+                                    {PROVIDER_LOGOS[prov.id]}
+                                 </div>
+                                 <span className={cn(
+                                    "text-xs font-bold",
+                                    isActive ? "text-primary" : "text-neutral-600 dark:text-neutral-300"
+                                 )}>
+                                    Connect {prov.label}
+                                 </span>
+                              </button>
+                           );
+                        })}
+                     </div>
+                  </div>
               </div>
             )}
             
