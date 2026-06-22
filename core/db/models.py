@@ -39,6 +39,7 @@ class FileModel(Base):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     original_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_materialized: Mapped[bool] = mapped_column(Boolean, default=True)
+    storage_provider: Mapped[Optional[str]] = mapped_column(String(50), default="telegram", nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     chunks: Mapped[List["ChunkModel"]] = relationship(

@@ -16,9 +16,10 @@ interface NewActionMenuProps {
   currentPath: string;
   onCreateFolder: () => void;
   onRefresh: () => void;
+  provider?: "telegram" | "omnicloud";
 }
 
-export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewActionMenuProps) {
+export function NewActionMenu({ currentPath, onCreateFolder, onRefresh, provider }: NewActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isHashing, setIsHashing] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<{ file: File; vpath: string }[]>([]);
@@ -33,7 +34,7 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
 
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { addActiveUpload } = useUIStore();
+  const { addActiveUpload, activeStorageProvider, setActiveStorageProvider } = useUIStore();
 
   // Handle directory attribute for folder upload input
   useEffect(() => {
@@ -97,6 +98,7 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
       const formData = new FormData();
       formData.append("file", file);
       formData.append("vpath", vpath);
+      formData.append("storage_provider", provider || activeStorageProvider);
       
       const response = await api.post("/files/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -281,6 +283,24 @@ export function NewActionMenu({ currentPath, onCreateFolder, onRefresh }: NewAct
           role="menu"
           className="absolute right-0 mt-2 w-52 bg-white/90 dark:bg-neutral-900/95 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-xl shadow-neutral-200/30 dark:shadow-black/50 z-50 p-1.5 focus:outline-none animate-in fade-in slide-in-from-top-2 duration-150"
         >
+          {/* Storage Provider Selector */}
+          {!provider && (
+            <>
+              <div className="px-3.5 py-2 flex flex-col space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Storage Provider</span>
+                <select
+                  value={activeStorageProvider}
+                  onChange={(e) => setActiveStorageProvider(e.target.value as "telegram" | "omnicloud")}
+                  className="w-full text-xs font-bold bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1.5 border-none outline-none focus:ring-2 focus:ring-primary/20 text-neutral-700 dark:text-neutral-200 transition-all cursor-pointer"
+                >
+                  <option value="telegram">Telegram (Default)</option>
+                  <option value="omnicloud">OmniCloud Engine</option>
+                </select>
+              </div>
+              <div className="h-px bg-neutral-150 dark:bg-neutral-800 my-1 mx-1" />
+            </>
+          )}
+
           <button
             role="menuitem"
             ref={(el) => { menuItemsRef.current[0] = el; }}

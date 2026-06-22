@@ -41,7 +41,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
   const currentPathSegments = params.path || [];
   const virtualPath = "/" + currentPathSegments.join("/");
   
-  const { data: files, isLoading, error, refetch } = useFiles(virtualPath);
+  const { data: files, isLoading, error, refetch } = useFiles(virtualPath, "telegram");
   const { viewMode, setViewMode, searchQuery } = useUIStore();
   const { prompt, confirm, addNotification } = useNotificationStore();
   const { selectedIds, clearSelection, isSelectionMode, setSelectedIds } = useSelectionStore();
@@ -67,7 +67,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
     });
     if (isConfirmed) {
       await api.delete(`/files/${file.file_id}`);
-      queryClient.invalidateQueries({ queryKey: ["files", virtualPath] });
+      queryClient.invalidateQueries({ queryKey: ["files", virtualPath, "telegram"] });
       queryClient.invalidateQueries({ queryKey: ["trash"] });
       setPreviewFile(null);
     }
@@ -84,12 +84,12 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
 
   const createFolderMutation = useMutation({
     mutationFn: async (name: string) => {
-      const response = await api.post("/files/folder", { name, vpath: virtualPath });
+      const response = await api.post("/files/folder", { name, vpath: virtualPath, storage_provider: "telegram" });
       return response.data;
     },
     onSuccess: () => {
       toast.success("Folder created");
-      queryClient.invalidateQueries({ queryKey: ["files", virtualPath] });
+      queryClient.invalidateQueries({ queryKey: ["files", virtualPath, "telegram"] });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.error?.message || "Failed to create folder");
@@ -104,7 +104,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
     },
     onSuccess: () => {
       toast.success("Updated favorites");
-      queryClient.invalidateQueries({ queryKey: ["files", virtualPath] });
+      queryClient.invalidateQueries({ queryKey: ["files", virtualPath, "telegram"] });
       clearSelection();
     }
   });
@@ -121,7 +121,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
         title: "Bulk Trash",
         message: `${data.data.count} items moved to trash bin.`
       });
-      queryClient.invalidateQueries({ queryKey: ["files", virtualPath] });
+      queryClient.invalidateQueries({ queryKey: ["files", virtualPath, "telegram"] });
       queryClient.invalidateQueries({ queryKey: ["system-status"] });
       clearSelection();
     },
@@ -256,6 +256,7 @@ export default function FilesPage({ params }: { params: { path?: string[] } }) {
                 currentPath={virtualPath} 
                 onCreateFolder={handleCreateFolder} 
                 onRefresh={refetch} 
+                provider="telegram"
               />
             )}
             {isSelectionMode && (

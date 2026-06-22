@@ -89,11 +89,11 @@ class TDriveManager:
         self,
         local_path: str | Path,
         virtual_path: str = "/",
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        storage_provider: str = "telegram"
     ) -> str:
         """
-        Uploads a file to Telegram in chunks.
-        Supports resuming interrupted uploads.
+        Uploads a file to Telegram in chunks, or delegates to OmniCloud.
         """
         path = Path(local_path)
         if not path.exists():
@@ -102,7 +102,96 @@ class TDriveManager:
         file_size = get_file_size(path)
         file_sha256 = get_file_sha256(path)
         filename = path.name
-        
+        file_uuid = uuid.uuid4().hex
+
+        # Check if already uploaded to omnicloud
+        if storage_provider == "omnicloud":
+            with self.db_session.get_session() as session:
+                from core.db.models import FileModel
+                from sqlalchemy import select
+                stmt = select(FileModel).where(
+                    FileModel.sha256 == file_sha256,
+                    FileModel.storage_provider == "omnicloud",
+                    FileModel.status == "completed"
+                )
+                existing = session.execute(stmt).scalars().first()
+                if existing:
+                    logger.info(f"File {filename} already fully uploaded to OmniCloud.")
+                    return existing.file_id
+
+            import httpx
+            import mimetypes
+            omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+            bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+            mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+
+            # 1. Initiate upload
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                initiate_payload = {
+                    "file_name": filename,
+                    "size": file_size,
+                    "mime_type": mime_type,
+                    "virtual_path": virtual_path
+                }
+                resp = await client.post(
+                    f"{omnicloud_url}/uploads/initiate",
+                    json=initiate_payload,
+                    headers={"X-Bridge-Secret": bridge_secret}
+                )
+                if resp.status_code != 201:
+                    raise ManagerError(f"Failed to initiate OmniCloud upload: {resp.text}")
+                
+                upload_data = resp.json().get("data", {})
+                upload_id = upload_data.get("upload_id")
+                if not upload_id:
+                    raise ManagerError(f"No upload ID returned from OmniCloud initiate: {resp.text}")
+
+            # 2. Stream content
+            async def file_generator():
+                uploaded_bytes = 0
+                with open(path, "rb") as f:
+                    while True:
+                        chunk = f.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        uploaded_bytes += len(chunk)
+                        if progress_callback:
+                            progress_callback(uploaded_bytes, file_size)
+                        yield chunk
+
+            async with httpx.AsyncClient(timeout=None) as client:
+                resp = await client.post(
+                    f"{omnicloud_url}/uploads/{upload_id}/stream",
+                    content=file_generator(),
+                    headers={
+                        "X-Bridge-Secret": bridge_secret,
+                        "Content-Type": "application/octet-stream"
+                    }
+                )
+                if resp.status_code != 201:
+                    raise ManagerError(f"Failed to stream OmniCloud upload: {resp.text}")
+                
+                remote_file = resp.json().get("data", {})
+                remote_file_id = remote_file.get("id") or remote_file.get("remote_file_id")
+                if not remote_file_id:
+                    raise ManagerError("OmniCloud upload response missing remote file ID")
+
+            # 3. Save File Record
+            with self.db_session.get_session() as session:
+                db = DBManager(session)
+                db.create_file_record(
+                    file_id=str(remote_file_id),
+                    file_uuid=file_uuid,
+                    filename=filename,
+                    virtual_path=virtual_path,
+                    size=file_size,
+                    sha256=file_sha256,
+                    chunk_count=1,
+                    storage_provider="omnicloud"
+                )
+            return str(remote_file_id)
+
+        # Telegram Upload Path
         file_id = file_sha256
         chunk_count = math.ceil(file_size / DEFAULT_CHUNK_SIZE) if file_size > 0 else 1
         file_uuid = uuid.uuid4().hex
@@ -230,12 +319,90 @@ class TDriveManager:
         filename: str,
         total_size: int,
         virtual_path: str = "/",
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        storage_provider: str = "telegram"
     ) -> str:
         """
-        Uploads a file by reading from a stream in chunks.
-        Never stores the full file on disk.
+        Uploads a file by reading from a stream, or delegates to OmniCloud.
         """
+        import hashlib
+        file_uuid = uuid.uuid4().hex
+
+        # Check if omnicloud
+        if storage_provider == "omnicloud":
+            import httpx
+            import mimetypes
+            omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+            bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+            mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+            # 1. Initiate upload
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                initiate_payload = {
+                    "file_name": filename,
+                    "size": total_size,
+                    "mime_type": mime_type,
+                    "virtual_path": virtual_path
+                }
+                resp = await client.post(
+                    f"{omnicloud_url}/uploads/initiate",
+                    json=initiate_payload,
+                    headers={"X-Bridge-Secret": bridge_secret}
+                )
+                if resp.status_code != 201:
+                    raise ManagerError(f"Failed to initiate OmniCloud upload: {resp.text}")
+                
+                upload_data = resp.json().get("data", {})
+                upload_id = upload_data.get("upload_id")
+                if not upload_id:
+                    raise ManagerError("No upload ID returned from OmniCloud initiate")
+
+            # 2. Stream content from stream
+            async def stream_generator():
+                uploaded_bytes = 0
+                while True:
+                    if asyncio.iscoroutinefunction(stream.read):
+                        chunk = await stream.read(128 * 1024)
+                    else:
+                        chunk = stream.read(128 * 1024)
+                    if not chunk:
+                        break
+                    uploaded_bytes += len(chunk)
+                    if progress_callback:
+                        progress_callback(uploaded_bytes, total_size)
+                    yield chunk
+
+            async with httpx.AsyncClient(timeout=None) as client:
+                resp = await client.post(
+                    f"{omnicloud_url}/uploads/{upload_id}/stream",
+                    content=stream_generator(),
+                    headers={
+                        "X-Bridge-Secret": bridge_secret,
+                        "Content-Type": "application/octet-stream"
+                    }
+                )
+                if resp.status_code != 201:
+                    raise ManagerError(f"Failed to stream OmniCloud upload: {resp.text}")
+                
+                remote_file = resp.json().get("data", {})
+                remote_file_id = remote_file.get("id") or remote_file.get("remote_file_id")
+                if not remote_file_id:
+                    raise ManagerError("OmniCloud upload response missing remote file ID")
+
+            # 3. Save File Record
+            with self.db_session.get_session() as session:
+                db = DBManager(session)
+                db.create_file_record(
+                    file_id=str(remote_file_id),
+                    file_uuid=file_uuid,
+                    filename=filename,
+                    virtual_path=virtual_path,
+                    size=total_size,
+                    sha256="unknown",
+                    chunk_count=1,
+                    storage_provider="omnicloud"
+                )
+            return str(remote_file_id)
         import hashlib
         temp_fid_content = f"{filename}:{total_size}:{time.time()}".encode()
         temp_fid = hashlib.sha256(temp_fid_content).hexdigest()
@@ -332,7 +499,7 @@ class TDriveManager:
         progress_callback: Optional[Callable[[int, int], None]] = None
     ) -> AsyncGenerator[bytes, None]:
         """
-        Downloads chunks from Telegram and yields decrypted bytes.
+        Downloads chunks from Telegram or streams from OmniCloud, and yields bytes.
         No full file is stored on disk during this process.
         """
         # Phase 1: Load metadata
@@ -342,14 +509,51 @@ class TDriveManager:
             if not file_record:
                 raise ManagerError(f"File {file_id} not found in database.")
             
+            is_omnicloud = file_record.storage_provider == "omnicloud"
             expected_chunk_count = file_record.chunk_count
             chunks_data = []
-            for c in db.get_chunks(file_id):
-                chunks_data.append({
-                    "msg_id": c.msg_id,
-                    "sha256": c.chunk_sha256,
-                    "seq": c.sequence
-                })
+            if not is_omnicloud:
+                for c in db.get_chunks(file_id):
+                    chunks_data.append({
+                        "msg_id": c.msg_id,
+                        "sha256": c.chunk_sha256,
+                        "seq": c.sequence
+                    })
+
+        if is_omnicloud:
+            import httpx
+            omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+            bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+            
+            timeout = httpx.Timeout(60.0, read=30 * 60.0, write=30 * 60.0)
+            bytes_yielded = 0
+            
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    async with client.stream(
+                        "GET",
+                        f"{omnicloud_url}/files/{file_id}/download",
+                        headers={"X-Bridge-Secret": bridge_secret}
+                    ) as response:
+                        if response.status_code != 200:
+                            raise ManagerError(f"Failed to stream from OmniCloud: {response.status_code} - {response.reason_phrase}")
+                        
+                        async for chunk in response.aiter_bytes(chunk_size=8192):
+                            if not chunk:
+                                continue
+                            bytes_yielded += len(chunk)
+                            yield chunk
+                            
+                            if progress_callback:
+                                estimated_chunks = max(1, bytes_yielded // (8192 * 20))
+                                progress_callback(estimated_chunks, max(estimated_chunks, 1))
+                        
+                        logger.debug(f"OmniCloud download completed for {file_id}: {bytes_yielded} bytes")
+            except httpx.TimeoutException as e:
+                raise ManagerError(f"OmniCloud download timeout after {bytes_yielded} bytes: {str(e)}")
+            except httpx.HTTPError as e:
+                raise ManagerError(f"OmniCloud download HTTP error: {str(e)}")
+            return
 
         if len(chunks_data) != expected_chunk_count:
             raise ManagerError(f"Missing chunks for file {file_id}. Expected {expected_chunk_count}, got {len(chunks_data)}.")
@@ -433,8 +637,24 @@ class TDriveManager:
             sha256 = file_record.sha256
             filename = file_record.filename
 
-            # 1. Delete from Telegram
-            if msg_ids:
+            # 1. Delete from Telegram or OmniCloud
+            is_omnicloud = file_record.storage_provider == "omnicloud"
+            if is_omnicloud:
+                omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+                bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.post(
+                            f"{omnicloud_url}/files/bulk/delete",
+                            json={"ids": [file_id]},
+                            headers={"X-Bridge-Secret": bridge_secret}
+                        )
+                        if resp.status_code != 200:
+                            logger.error(f"Failed to delete file from OmniCloud: {resp.text}")
+                except Exception as e:
+                    logger.error(f"Error calling OmniCloud delete API: {e}")
+            elif msg_ids:
                 try:
                     await self.tg_client.delete_messages(self.channel_id, msg_ids)
                 except Exception as e:

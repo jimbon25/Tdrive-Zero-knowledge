@@ -68,7 +68,8 @@ async def list_files(
     db_session: Annotated[DatabaseSession, Depends(get_db_session)],
     manager: Annotated[TDriveManager, Depends(get_manager)],
     path: str = "/",
-    q: Optional[str] = None
+    q: Optional[str] = None,
+    provider: Optional[str] = None
 ):
     from urllib.parse import unquote
     decoded_path = unquote(path)
@@ -81,9 +82,14 @@ async def list_files(
             search_text = q.lower().replace("starred:true", "").strip()
             if search_text:
                 files = [f for f in files if search_text in f.filename.lower()]
+            if provider:
+                if provider == "telegram":
+                    files = [f for f in files if f.storage_provider in ["telegram", None, ""]]
+                else:
+                    files = [f for f in files if f.storage_provider == provider]
             return StructuredResponse(success=True, data=[FileSchema.model_validate(f) for f in files])
 
-        files = db.list_files(decoded_path)
+        files = db.list_files(decoded_path, provider=provider)
         return StructuredResponse(success=True, data=[FileSchema.model_validate(f) for f in files])
 
 @router.get("/starred", response_model=StructuredResponse[List[FileSchema]])
@@ -212,7 +218,7 @@ async def create_folder(
     
     with db_session_factory.get_session() as session:
         db = DBManager(session)
-        folder = db.create_folder(request.name, normalized_vpath)
+        folder = db.create_folder(request.name, normalized_vpath, storage_provider=request.storage_provider)
         session.commit()
         return StructuredResponse(success=True, data=FileSchema.model_validate(folder))
 
@@ -240,7 +246,8 @@ async def upload_file(
     manager_factory: Annotated[TDriveManager, Depends(get_manager)],
     sm: Annotated[SessionManager, Depends(get_session_manager)],
     file: UploadFile = File(...),
-    vpath: str = Form("/")
+    vpath: str = Form("/"),
+    storage_provider: str = Form("telegram")
 ):
     from urllib.parse import unquote
     normalized_vpath = unquote(vpath)
@@ -281,7 +288,7 @@ async def upload_file(
                 db = DBManager(session)
                 db.update_job_status(job_id, "running")
 
-            file_id = await manager_factory.upload_file(temp_storage_path, virtual_path=normalized_vpath, progress_callback=progress_hook)
+            file_id = await manager_factory.upload_file(temp_storage_path, virtual_path=normalized_vpath, progress_callback=progress_hook, storage_provider=storage_provider)
 
             with db_session_factory.get_session() as session:
                 db = DBManager(session)

@@ -54,6 +54,7 @@ class DBManager:
         encrypted: bool = True,
         is_folder: bool = False,
         thumbnail: Optional[str] = None,
+        storage_provider: Optional[str] = "telegram",
     ) -> FileModel:
         """Creates a new file record in the database."""
         file_record = FileModel(
@@ -68,6 +69,7 @@ class DBManager:
             is_folder=is_folder,
             thumbnail=thumbnail,
             status="completed" if is_folder else "pending",
+            storage_provider=storage_provider,
         )
         self.session.add(file_record)
         return file_record
@@ -76,6 +78,7 @@ class DBManager:
         self,
         name: str,
         virtual_path: str,
+        storage_provider: Optional[str] = "telegram"
     ) -> FileModel:
         """Creates a new folder record."""
         import uuid
@@ -89,7 +92,8 @@ class DBManager:
             sha256="none",
             chunk_count=0,
             file_uuid=uuid.uuid4().hex,
-            is_folder=True
+            is_folder=True,
+            storage_provider=storage_provider
         )
 
     def update_file_status(self, file_id: str, status: str) -> None:
@@ -109,11 +113,18 @@ class DBManager:
         stmt = select(FileModel).where(FileModel.file_uuid == file_uuid)
         return self.session.execute(stmt).scalar_one_or_none()
 
-    def list_files(self, virtual_path: Optional[str] = None, include_trashed: bool = False) -> List[FileModel]:
+    def list_files(self, virtual_path: Optional[str] = None, include_trashed: bool = False, provider: Optional[str] = None) -> List[FileModel]:
         """Lists all files/folders, filtered by path. Folders appear first."""
+        from sqlalchemy import or_
         stmt = select(FileModel)
         if virtual_path:
             stmt = stmt.where(FileModel.virtual_path == virtual_path)
+        
+        if provider:
+            if provider == "telegram":
+                stmt = stmt.where(or_(FileModel.storage_provider == "telegram", FileModel.storage_provider == None, FileModel.storage_provider == ""))
+            else:
+                stmt = stmt.where(FileModel.storage_provider == provider)
         
         if not include_trashed:
             stmt = stmt.where(FileModel.is_trashed == False)

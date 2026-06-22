@@ -25,7 +25,9 @@ import {
   Check,
   Maximize,
   Minimize,
-  Bot
+  Bot,
+  Cloud,
+  Plus
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -40,6 +42,26 @@ export default function SettingsPage() {
     accentColor, setAccentColor, 
     density, setDensity 
   } = useUIStore();
+
+  // OmniCloud States & Functions
+  const [selectedCredentialProvider, setSelectedCredentialProvider] = React.useState<string | null>(null);
+  const [credentialForm, setCredentialForm] = React.useState({
+    email: "",
+    password: "",
+    bucket: "",
+    accessKeyId: "",
+    secretAccessKey: "",
+    region: "us-east-1",
+    endpoint: ""
+  });
+
+  const formatSize = (bytes: number) => {
+    if (!bytes) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
 
   const { data: status, isLoading } = useQuery({
     queryKey: ["system-status"],
@@ -122,6 +144,72 @@ export default function SettingsPage() {
     onSuccess: () => {
       toast.success("Developer mode updated");
       queryClient.invalidateQueries({ queryKey: ["system-status"] });
+    }
+  });
+
+  // OmniCloud Integration Queries & Mutations
+  const { data: ocAccounts, refetch: refetchOcAccounts } = useQuery({
+    queryKey: ["omnicloud-accounts"],
+    queryFn: async () => {
+      const resp = await api.get<StructuredResponse<any[]>>("/system/omnicloud/accounts");
+      return resp.data.data || [];
+    },
+    enabled: !!status?.omnicloud_connected,
+  });
+
+  const deleteOcAccount = useMutation({
+    mutationFn: async (id: string) => {
+      const resp = await api.delete<StructuredResponse<any>>(`/system/omnicloud/accounts/${id}`);
+      if (!resp.data.success) {
+        throw new Error(resp.data.error?.message || "Failed to disconnect account");
+      }
+      return resp.data.data;
+    },
+    onSuccess: () => {
+      toast.success("Account disconnected successfully");
+      refetchOcAccounts();
+      queryClient.invalidateQueries({ queryKey: ["system-status"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to disconnect account");
+    }
+  });
+
+  const connectOcOAuth = useMutation({
+    mutationFn: async (provider: string) => {
+      const resp = await api.get<StructuredResponse<string>>(`/system/omnicloud/connect/${provider}`);
+      if (!resp.data.success) {
+        throw new Error(resp.data.error?.message || "Failed to initialize provider connection");
+      }
+      return resp.data.data;
+    },
+    onSuccess: (url) => {
+      if (url) {
+        window.location.href = url;
+      } else {
+        toast.error("Failed to retrieve connection link");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to initialize provider connection");
+    }
+  });
+
+  const connectOcCreds = useMutation({
+    mutationFn: async ({ provider, body }: { provider: string, body: any }) => {
+      const resp = await api.post<StructuredResponse<any>>(`/system/omnicloud/connect/${provider}`, body);
+      if (!resp.data.success) {
+        throw new Error(resp.data.error?.message || "Failed to connect cloud account");
+      }
+      return resp.data.data;
+    },
+    onSuccess: () => {
+      toast.success("Account connected successfully!");
+      refetchOcAccounts();
+      queryClient.invalidateQueries({ queryKey: ["system-status"] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to connect cloud account");
     }
   });
 
@@ -367,6 +455,230 @@ export default function SettingsPage() {
          </div>
       </section>
 
+      {/* OmniCloud Integration Section */}
+      <section className="space-y-4">
+         <div className="flex items-center space-x-2 px-1">
+            <Cloud size={14} className="text-blue-500" />
+            <h2 className="text-[10px] font-black uppercase text-neutral-400 tracking-[0.2em]">OmniCloud Storage</h2>
+         </div>
+         
+         <div className="bg-card border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 space-y-6 shadow-sm">
+            <div className="flex items-center justify-between">
+               <div>
+                  <h3 className="font-bold text-sm">OmniCloud Server Status</h3>
+                  <p className="text-xs text-neutral-500 mt-1">Connect secondary cloud engines to aggregate storage.</p>
+               </div>
+               <div className="flex items-center space-x-2">
+                  <span className={cn(
+                    "text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider",
+                    status?.omnicloud_connected ? "bg-blue-500/10 text-blue-500" : "bg-neutral-200 dark:bg-neutral-800 text-neutral-500"
+                  )}>
+                     {status?.omnicloud_connected ? "Connected" : "Offline"}
+                  </span>
+               </div>
+            </div>
+
+            {/* List of Connected Accounts */}
+            {status?.omnicloud_connected && (
+              <div className="space-y-4">
+                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
+                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-3">Linked Accounts</h4>
+                    {ocAccounts && ocAccounts.length > 0 ? (
+                       <div className="space-y-2">
+                          {ocAccounts.map((account: any) => (
+                             <div key={account.id} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800 rounded-xl">
+                                <div className="flex items-center space-x-3">
+                                   <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                                      <Database size={16} />
+                                   </div>
+                                   <div>
+                                      <p className="text-xs font-bold capitalize">{account.provider} <span className="text-neutral-400 font-normal">({account.email})</span></p>
+                                      <p className="text-[10px] text-neutral-500 mt-0.5">
+                                         {formatSize(account.used_space || 0)} used of {formatSize(account.total_space || 0)}
+                                      </p>
+                                   </div>
+                                </div>
+                                <Button
+                                  variant="destructive"
+                                  className="h-8 rounded-lg text-[10px] font-bold px-3"
+                                  onClick={async () => {
+                                     if (await confirm({ title: "Disconnect account?", message: `Are you sure you want to disconnect this ${account.provider} account?` })) {
+                                        deleteOcAccount.mutate(account.id);
+                                     }
+                                  }}
+                                  disabled={deleteOcAccount.isPending}
+                                >
+                                   {deleteOcAccount.isPending ? <Loader2 className="animate-spin" size={10} /> : "Disconnect"}
+                                </Button>
+                             </div>
+                          ))}
+                       </div>
+                    ) : (
+                       <p className="text-xs text-neutral-500 italic">No storage accounts connected. Link a cloud provider below.</p>
+                    )}
+                 </div>
+
+                 {/* Link New Cloud Storage Provider */}
+                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
+                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-3">Link New Provider</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                       {/* OAuth providers */}
+                       {["google", "onedrive", "dropbox", "yandex"].map((provider) => (
+                          <Button
+                            key={provider}
+                            variant="outline"
+                            className="h-10 text-xs rounded-xl font-bold capitalize flex items-center justify-center gap-1.5"
+                            onClick={() => connectOcOAuth.mutate(provider)}
+                            disabled={connectOcOAuth.isPending}
+                          >
+                             {connectOcOAuth.isPending && connectOcOAuth.variables === provider ? (
+                               <Loader2 className="animate-spin" size={14} />
+                             ) : (
+                               <Plus size={14} />
+                             )}
+                             <span>{provider === "google" ? "Google Drive" : provider}</span>
+                          </Button>
+                       ))}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                       {/* Credential providers (Mega, S3, pCloud) */}
+                       {["mega", "pcloud", "s3"].map((provider) => (
+                          <Button
+                            key={provider}
+                            variant="outline"
+                            className="h-10 text-xs rounded-xl font-bold capitalize flex items-center justify-center gap-1.5 border-dashed"
+                            onClick={() => {
+                              setSelectedCredentialProvider(provider);
+                              setCredentialForm({ email: "", password: "", bucket: "", accessKeyId: "", secretAccessKey: "", region: "us-east-1", endpoint: "" });
+                            }}
+                          >
+                             <Plus size={14} />
+                             <span>{provider}</span>
+                          </Button>
+                       ))}
+                    </div>
+                 </div>
+              </div>
+            )}
+            
+            {/* Inline credential input forms if one is selected */}
+            {selectedCredentialProvider && (
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 space-y-4">
+                 <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold capitalize">Link {selectedCredentialProvider} Account</h4>
+                    <Button variant="ghost" className="h-6 px-2 text-[10px] font-bold" onClick={() => setSelectedCredentialProvider(null)}>Cancel</Button>
+                 </div>
+                 
+                 <div className="space-y-3 max-w-md">
+                    {(selectedCredentialProvider === "mega" || selectedCredentialProvider === "pcloud") && (
+                       <>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-bold text-neutral-400">Account Email / Username</label>
+                             <input 
+                               type="email"
+                               placeholder="user@example.com"
+                               value={credentialForm.email}
+                               onChange={(e) => setCredentialForm({ ...credentialForm, email: e.target.value })}
+                               className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                             />
+                          </div>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-bold text-neutral-400">Password</label>
+                             <input 
+                               type="password"
+                               placeholder="••••••••"
+                               value={credentialForm.password}
+                               onChange={(e) => setCredentialForm({ ...credentialForm, password: e.target.value })}
+                               className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                             />
+                          </div>
+                       </>
+                    )}
+
+                    {selectedCredentialProvider === "s3" && (
+                       <>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-bold text-neutral-400">Bucket Name</label>
+                             <input 
+                               type="text"
+                               placeholder="my-bucket-name"
+                               value={credentialForm.bucket}
+                               onChange={(e) => setCredentialForm({ ...credentialForm, bucket: e.target.value })}
+                               className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                             />
+                          </div>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-bold text-neutral-400">Access Key ID</label>
+                             <input 
+                               type="text"
+                               placeholder="AKIAIOSFODNN7EXAMPLE"
+                               value={credentialForm.accessKeyId}
+                               onChange={(e) => setCredentialForm({ ...credentialForm, accessKeyId: e.target.value })}
+                               className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                             />
+                          </div>
+                          <div className="space-y-1">
+                             <label className="text-[10px] font-bold text-neutral-400">Secret Access Key</label>
+                             <input 
+                               type="password"
+                               placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                               value={credentialForm.secretAccessKey}
+                               onChange={(e) => setCredentialForm({ ...credentialForm, secretAccessKey: e.target.value })}
+                               className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                             />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-neutral-400">Region</label>
+                                <input 
+                                  type="text"
+                                  placeholder="us-east-1"
+                                  value={credentialForm.region}
+                                  onChange={(e) => setCredentialForm({ ...credentialForm, region: e.target.value })}
+                                  className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                             </div>
+                             <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-neutral-400">Endpoint (Optional)</label>
+                                <input 
+                                  type="text"
+                                  placeholder="https://s3.amazonaws.com"
+                                  value={credentialForm.endpoint}
+                                  onChange={(e) => setCredentialForm({ ...credentialForm, endpoint: e.target.value })}
+                                  className="w-full bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-4 h-10 text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                             </div>
+                          </div>
+                       </>
+                    )}
+
+                    <Button 
+                      className="w-full h-10 rounded-xl text-xs font-bold mt-2"
+                      onClick={() => {
+                        const body = selectedCredentialProvider === "s3" ? {
+                          bucket: credentialForm.bucket,
+                          accessKeyId: credentialForm.accessKeyId,
+                          secretAccessKey: credentialForm.secretAccessKey,
+                          region: credentialForm.region,
+                          endpoint: credentialForm.endpoint || undefined
+                        } : {
+                          email: credentialForm.email,
+                          password: credentialForm.password
+                        };
+                        connectOcCreds.mutate({ provider: selectedCredentialProvider!, body });
+                        setSelectedCredentialProvider(null);
+                      }}
+                      disabled={connectOcCreds.isPending}
+                    >
+                       {connectOcCreds.isPending ? <Loader2 className="animate-spin" size={14} /> : `Connect ${selectedCredentialProvider}`}
+                    </Button>
+                 </div>
+              </div>
+            )}
+         </div>
+      </section>
+
       {/* 4. Status Overview */}
       <section className="space-y-4">
         <h2 className="text-[10px] font-bold uppercase text-neutral-400 tracking-[0.2em] px-1">Infrastructure Health</h2>
@@ -380,7 +692,7 @@ export default function SettingsPage() {
 
       {/* 5. Administrative Section */}
       <section className="space-y-4">
-        <h2 className="text-[10px] font-bold uppercase text-neutral-400 tracking-[0.2em] px-1">Administrative Utilities</h2>
+        <h2 className="text-[10px] font-bold uppercase text-neutral-400 tracking-[0.2em] px-1">Utilities</h2>
         <div className="bg-card border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
           <AdminAction 
             icon={RefreshCw} 

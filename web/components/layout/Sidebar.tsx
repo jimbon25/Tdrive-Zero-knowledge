@@ -14,7 +14,8 @@ import {
   BarChart3,
   Star,
   Sparkles,
-  Server
+  Server,
+  Cloud
 } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { cn } from "@/components/ui";
@@ -41,6 +42,7 @@ export function Sidebar({ isMobile = false }: SidebarProps) {
 
   const navItems = [
     { name: "My Files", href: "/files", icon: Files },
+    { name: "OmniCloud", href: "/omnicloud", icon: Cloud },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Recent Tasks", href: "/jobs", icon: Clock },
     { name: "Starred", href: "/starred", icon: Star },
@@ -114,6 +116,51 @@ export function Sidebar({ isMobile = false }: SidebarProps) {
                 {formatSize(status?.active_storage || 0)} <span className="text-neutral-400 font-medium">Cloud</span>
              </p>
           </div>
+        </div>
+
+        <div className="space-y-3 pt-2 border-t border-neutral-150/40 dark:border-neutral-800/40">
+          <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.15em] text-neutral-400">
+             <div className="flex items-center space-x-2">
+                <Database size={10} className={status?.omnicloud_connected ? "text-blue-500 animate-pulse" : "text-neutral-400"} />
+                <span>OmniCloud</span>
+             </div>
+             {status?.omnicloud_connected ? (
+               <span className="text-blue-500 font-bold">
+                 {status?.omnicloud_total ? `${Math.min(100, Math.round(((status.omnicloud_used || 0) / status.omnicloud_total) * 100))}%` : "Ready"}
+               </span>
+             ) : (
+               <span className="text-neutral-400 italic">Offline</span>
+             )}
+          </div>
+          
+          {status?.omnicloud_connected ? (
+            (status.omnicloud_total || 0) > 0 ? (
+              <>
+                <div className="h-1 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 rounded-full transition-all duration-1000 ease-out" 
+                    style={{ 
+                      width: `${Math.min(100, Math.round((status.omnicloud_used! / status.omnicloud_total!) * 100))}%` 
+                    }} 
+                  />
+                </div>
+                
+                <div className="flex flex-col space-y-0.5">
+                   <p className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300">
+                      {formatSize(status.omnicloud_used || 0)} <span className="text-neutral-400 font-medium">/ {formatSize(status.omnicloud_total || 0)}</span>
+                   </p>
+                </div>
+              </>
+            ) : (
+              <div className="text-[10px] text-neutral-400 leading-tight">
+                No accounts linked yet. <Link href="/settings" className="text-blue-500 hover:underline font-bold">Link account</Link>
+              </div>
+            )
+          ) : (
+            <div className="text-[10px] text-neutral-400 leading-tight">
+              Service disconnected. Check your backend configuration.
+            </div>
+          )}
         </div>
 
         {/* Security Badge */}

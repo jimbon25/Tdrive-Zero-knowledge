@@ -55,6 +55,13 @@ class DatabaseSession:
         from sqlalchemy import text
         with self.engine.connect() as conn:
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_files_sha256 ON files (sha256)"))
+            
+            # Check and migrate columns
+            res = conn.execute(text("PRAGMA table_info(files)")).fetchall()
+            columns = [r[1] for r in res]
+            if "storage_provider" not in columns:
+                conn.execute(text("ALTER TABLE files ADD COLUMN storage_provider VARCHAR(50) DEFAULT 'telegram'"))
+                
             conn.commit()
 
     def drop_tables(self) -> None:

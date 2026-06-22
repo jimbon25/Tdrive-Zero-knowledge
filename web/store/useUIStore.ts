@@ -15,6 +15,7 @@ interface UIState {
   accentColor: AccentColor;
   density: UIDensity;
   viewMode: "grid" | "list";
+  activeStorageProvider: "telegram" | "omnicloud";
   
   // Search
   searchQuery: string;
@@ -34,6 +35,7 @@ interface UIState {
   setAccentColor: (color: AccentColor) => void;
   setDensity: (density: UIDensity) => void;
   setViewMode: (mode: "grid" | "list") => void;
+  setActiveStorageProvider: (provider: "telegram" | "omnicloud") => void;
   setSearchQuery: (query: string) => void;
   setServerUnlocked: (unlocked: boolean) => void;
   addActiveUpload: (jobId: string) => void;
@@ -50,6 +52,7 @@ export const useUIStore = create<UIState>()(
       accentColor: "blue",
       density: "comfortable",
       viewMode: "list",
+      activeStorageProvider: "telegram",
       
       searchQuery: "",
       isServerUnlocked: false,
@@ -65,6 +68,7 @@ export const useUIStore = create<UIState>()(
       setAccentColor: (accentColor) => set({ accentColor }),
       setDensity: (density) => set({ density }),
       setViewMode: (mode) => set({ viewMode: mode }),
+      setActiveStorageProvider: (provider) => set({ activeStorageProvider: provider }),
       setSearchQuery: (query) => set({ searchQuery: query }),
       setServerUnlocked: (unlocked) => set({ isServerUnlocked: unlocked }),
       
@@ -85,7 +89,8 @@ export const useUIStore = create<UIState>()(
         themeMode: state.themeMode, 
         accentColor: state.accentColor, 
         density: state.density,
-        viewMode: state.viewMode
+        viewMode: state.viewMode,
+        activeStorageProvider: state.activeStorageProvider
       }),
     }
   )

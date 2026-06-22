@@ -58,6 +58,7 @@ class LoginResponse(BaseModel):
 class FolderCreateRequest(BaseModel):
     name: str
     vpath: str = "/"
+    storage_provider: Optional[str] = "telegram"
 
 class MoveItemSchema(BaseModel):
     file_id: str
@@ -98,6 +99,7 @@ class FileSchema(BaseModel):
     created_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
     original_path: Optional[str] = None
+    storage_provider: Optional[str] = "telegram"
 
 class FileDetailSchema(FileSchema):
     chunks: List[ChunkSchema]
@@ -157,6 +159,9 @@ class SystemStatus(BaseModel):
     integrity: Optional[IntegrityInfo] = None
     bot: Optional[BotInfo] = None
     features: Optional[Dict[str, List[Dict[str, Any]]]] = None
+    omnicloud_connected: bool = False
+    omnicloud_used: int = 0
+    omnicloud_total: int = 0
 
 # --- Bulk Models ---
 

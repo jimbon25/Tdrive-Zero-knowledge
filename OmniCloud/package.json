@@ -1,0 +1,17 @@
+{
+  "name": "omnicloud",
+  "version": "1.0.0",
+  "description": "OmniCloud Backend for TDrive integration",
+  "scripts": {
+    "dev": "npm --prefix backend run dev",
+    "start": "npm --prefix backend start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ]
+}

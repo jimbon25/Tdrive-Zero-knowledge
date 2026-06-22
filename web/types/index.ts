@@ -14,6 +14,7 @@ export interface FileItem {
   created_at: string;
   deleted_at?: string;
   original_path?: string;
+  storage_provider?: string;
 }
 
 export interface Job {
@@ -65,6 +66,9 @@ export interface SystemStatus {
   active_storage: number;
   trash_storage: number;
   total_storage: number;
+  omnicloud_connected?: boolean;
+  omnicloud_used?: number;
+  omnicloud_total?: number;
   integrity?: {
     state: string;
     safe_mode: boolean;

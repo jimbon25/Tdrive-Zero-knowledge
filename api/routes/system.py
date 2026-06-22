@@ -27,6 +27,26 @@ from core.feature_registry import FeatureRegistry
 
 router = APIRouter(prefix="/system", tags=["system"])
 
+async def fetch_omnicloud_storage():
+    import os
+    import httpx
+    omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+    bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{omnicloud_url}/accounts",
+                headers={"X-Bridge-Secret": bridge_secret}
+            )
+            if resp.status_code == 200:
+                accounts = resp.json().get("data", [])
+                used = sum(int(a.get("used_space", 0)) for a in accounts)
+                total = sum(int(a.get("total_space", 0)) for a in accounts)
+                return True, used, total
+    except Exception:
+        pass
+    return False, 0, 0
+
 @router.get("/status", response_model=StructuredResponse[SystemStatus])
 async def get_status(
     manager: Annotated[TDriveManager, Depends(get_manager)],
@@ -131,6 +151,8 @@ async def get_status(
             authorized_user_details=auth_user_details
         )
 
+    omnicloud_connected, omnicloud_used, omnicloud_total = await fetch_omnicloud_storage()
+
     return StructuredResponse(
         success=True,
         data=SystemStatus(
@@ -147,7 +169,10 @@ async def get_status(
             total_storage=active_size + trash_size,
             integrity=IntegrityInfo(**integrity),
             features=registry.get_runtime_map(),
-            bot=bot_info
+            bot=bot_info,
+            omnicloud_connected=omnicloud_connected,
+            omnicloud_used=omnicloud_used,
+            omnicloud_total=omnicloud_total
         )
     )
 
@@ -410,3 +435,99 @@ async def get_service_logs(service_name: str, lines: int = 100):
         return StructuredResponse(success=True, data=ServiceLogResponse(service=service_name, logs=logs))
     except Exception as e:
         return StructuredResponse(success=False, error={"code": "INTERNAL_ERROR", "message": str(e)})
+
+# --- OmniCloud Proxy Endpoints ---
+
+@router.get("/omnicloud/accounts", response_model=StructuredResponse[list])
+async def get_omnicloud_accounts():
+    import os
+    import httpx
+    omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+    bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{omnicloud_url}/accounts",
+                headers={"X-Bridge-Secret": bridge_secret}
+            )
+            if resp.status_code == 200:
+                return StructuredResponse(success=True, data=resp.json().get("data", []))
+            else:
+                return StructuredResponse(success=False, error={"code": "OMNICLOUD_API_ERROR", "message": resp.text})
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "OMNICLOUD_CONN_ERROR", "message": str(e)})
+
+@router.delete("/omnicloud/accounts/{account_id}", response_model=StructuredResponse[dict])
+async def delete_omnicloud_account(account_id: str):
+    import os
+    import httpx
+    omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+    bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.delete(
+                f"{omnicloud_url}/accounts/{account_id}",
+                headers={"X-Bridge-Secret": bridge_secret}
+            )
+            if resp.status_code == 200:
+                return StructuredResponse(success=True, data=resp.json().get("data", {}))
+            else:
+                return StructuredResponse(success=False, error={"code": "OMNICLOUD_API_ERROR", "message": resp.text})
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "OMNICLOUD_CONN_ERROR", "message": str(e)})
+
+@router.get("/omnicloud/connect/{provider}", response_model=StructuredResponse[str])
+async def connect_omnicloud_oauth(provider: str):
+    import os
+    import httpx
+    if provider not in ["google", "onedrive", "dropbox", "yandex"]:
+        raise HTTPException(status_code=400, detail="Invalid OAuth provider")
+    omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+    bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{omnicloud_url}/accounts/{provider}/connect",
+                headers={"X-Bridge-Secret": bridge_secret}
+            )
+            if resp.status_code == 200:
+                res_json = resp.json()
+                res_data = res_json.get("data", "")
+                if isinstance(res_data, dict) and "authorizationUrl" in res_data:
+                    res_data = res_data["authorizationUrl"]
+                return StructuredResponse(success=True, data=str(res_data))
+            else:
+                try:
+                    err_msg = resp.json().get("error", resp.text)
+                except Exception:
+                    err_msg = resp.text
+                return StructuredResponse(success=False, error={"code": "OMNICLOUD_API_ERROR", "message": err_msg})
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "OMNICLOUD_CONN_ERROR", "message": str(e)})
+
+@router.post("/omnicloud/connect/{provider}", response_model=StructuredResponse[dict])
+async def connect_omnicloud_credentials(provider: str, body: dict):
+    import os
+    import httpx
+    if provider not in ["mega", "s3", "pcloud"]:
+        raise HTTPException(status_code=400, detail="Invalid credential provider")
+    omnicloud_url = os.environ.get("OMNICLOUD_API_URL", "http://localhost:8787/api")
+    bridge_secret = os.environ.get("INTERNAL_BRIDGE_SECRET", "omnicloud-dev-bridge-secret")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{omnicloud_url}/accounts/{provider}/connect",
+                headers={"X-Bridge-Secret": bridge_secret},
+                json=body
+            )
+            if resp.status_code == 200:
+                return StructuredResponse(success=True, data=resp.json().get("data", {}))
+            else:
+                try:
+                    err_msg = resp.json().get("error", resp.text)
+                except Exception:
+                    err_msg = resp.text
+                return StructuredResponse(success=False, error={"code": "OMNICLOUD_API_ERROR", "message": err_msg})
+    except Exception as e:
+        return StructuredResponse(success=False, error={"code": "OMNICLOUD_CONN_ERROR", "message": str(e)})
+

@@ -4,12 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
 import { FileItem, StructuredResponse } from "@/types";
 
-export function useFiles(path: string = "/") {
+export function useFiles(path: string = "/", provider?: string) {
   return useQuery({
-    queryKey: ["files", path],
+    queryKey: ["files", path, provider],
     queryFn: async () => {
       const response = await api.get<StructuredResponse<FileItem[]>>("/files", {
-        params: { path },
+        params: { path, provider },
       });
       return response.data.data || [];
     },
